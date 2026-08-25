@@ -3,9 +3,10 @@
 De Claude Code-plugin van [Ranking Masters](https://rankingmasters.nl) die het bedrijfsbrein laat meedraaien zonder dat iemand erom hoeft te vragen.
 
 ```
-/plugin marketplace add Ranking-Masters/rmos-plugin
-/plugin install rmos@rmos
+claude plugin marketplace add Ranking-Masters/rmos-plugin && claude plugin install rmos@rmos
 ```
+
+Eén regel voor je terminal, dus in één keer te plakken. Doe je het binnen Claude Code met `/plugin`, geef de twee commando's dan **één voor één** — het eerste opent een venster, en een tweede regel belandt in dat invoerveld.
 
 | Onderdeel | Wat het doet |
 |---|---|
