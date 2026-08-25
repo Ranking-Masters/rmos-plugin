@@ -1,0 +1,15 @@
+name: zelftest
+
+# Deze plugin draait op de laptop van iedere collega. Een typo hier is stille
+# schade op zeventien machines, dus loopt elke push langs de zelftest.
+on:
+  push:
+  pull_request:
+
+jobs:
+  zelftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Zelftest
+        run: ./test.sh

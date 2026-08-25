@@ -18,6 +18,12 @@ Hij haalt geen kennis op, slaat niets op en kent geen sleutel. Er staat dus nooi
 
 Zonder verbonden RMOS-connector doet deze plugin niets nuttigs. Verbinden: [os.rankingmasters.nl/agents](https://os.rankingmasters.nl/agents).
 
+## Zelftest
+
+`./test.sh` — geen framework, één bestand. Hij controleert de dragende tak (spreekt in een rolmap, zwijgt in een git-repo en in submappen daarvan), dat de tekst de agent daadwerkelijk naar `rmos_changes` en `rmos_start` stuurt, dat een falende of ontbrekende `git` de hook niet sloopt, en dat de manifesten geldige JSON zijn die naar een bestaande `boot.sh` wijzen. Draait ook op elke push via GitHub Actions.
+
+Waarom: beide faalmodi van de hook zijn stil. Zwijgt hij overal, dan is de feature dood en merkt niemand het; praat hij in codebases, dan zet iemand de plugin uit.
+
 ## Uitzetten
 
 `/plugin uninstall rmos@rmos` — er blijft niets achter, want de plugin schrijft niet buiten zijn eigen map.
