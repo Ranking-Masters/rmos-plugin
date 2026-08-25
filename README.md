@@ -25,6 +25,27 @@ Zonder verbonden RMOS-connector doet deze plugin niets nuttigs. Verbinden: [os.r
 
 Waarom: beide faalmodi van de hook zijn stil. Zwijgt hij overal, dan is de feature dood en merkt niemand het; praat hij in codebases, dan zet iemand de plugin uit.
 
+## De badge in je statusbalk
+
+Zodat je ziet dát RMOS meedraait — en of er iets op je wacht. Eén regel in `~/.claude/settings.json`:
+
+```json
+"statusLine": {
+  "type": "command",
+  "command": "bash -c 'for d in \"$HOME\"/.claude/plugins/cache/rmos/rmos/*/hooks/statusline.sh; do [ -f \"$d\" ] && s=\"$d\"; done; [ -n \"${s:-}\" ] && bash \"$s\"; for p in \"$HOME\"/.claude/plugins/cache/ponytail/ponytail/*/hooks/ponytail-statusline.sh; do [ -f \"$p\" ] && q=\"$p\"; done; [ -n \"${q:-}\" ] && { printf \" \"; bash \"$q\"; }'"
+}
+```
+
+| Je ziet | Wat het betekent |
+|---|---|
+| `[RMOS]` groen | RMOS draait mee, niets dat op jou wacht |
+| `[RMOS 3]` oranje | drie punten wachten op jou — je agent heeft ze bij de sessiestart gemeld |
+| niets | de plugin staat niet aan |
+
+Twee dingen over dat commando. Het zoekt zijn eigen pad met een sterretje in plaats van een vast versienummer, want anders verdwijnt de badge stil bij de eerste plugin-update. En het draait daarna de ponytail-badge als die er is: Claude Code kent maar één `statusLine`, dus twee badges betekent twee commando's achter elkaar. Gebruik je ponytail niet, dan kun je dat tweede stuk weglaten.
+
+De teller komt uit `~/.claude/.rmos-status`, dat de `PostToolUse`-hook schrijft uit het antwoord dat je agent tóch al ophaalde. Dus geen sleutel op schijf en geen netwerkcall in je statusbalk. Ouder dan twaalf uur en de teller vervalt: onbekend is geen nul.
+
 ## Uitzetten
 
 `/plugin uninstall rmos@rmos` — er blijft niets achter, want de plugin schrijft niet buiten zijn eigen map.

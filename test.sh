@@ -48,7 +48,28 @@ uit4="$(cd "$TMP/rolmap" && PATH="$TMP/bin:$PATH" bash "$HOOK")"; code4=$?
 [ $code4 -eq 0 ] && ok "git faalt: exit 0" || fout "git faalt: exit $code4, moet 0 zijn"
 [ -n "$uit4" ] && ok "git faalt: spreekt (veilige aanname)" || fout "git faalt: zwijgt"
 
-# 6. de manifesten moeten geldige JSON zijn, anders weigert Claude Code de plugin
+# 6. de statusbalk: een badge die liegt is erger dan geen badge
+export CLAUDE_CONFIG_DIR="$TMP/cfg"; mkdir -p "$CLAUDE_CONFIG_DIR"
+SL="$(cd "$(dirname "$0")" && pwd)/rmos/hooks/statusline.sh"
+PT="$(cd "$(dirname "$0")" && pwd)/rmos/hooks/post-tool.sh"
+
+uit="$(bash "$SL")"
+case "$uit" in *RMOS*) ok "statusbalk: toont een badge zonder standbestand" ;; *) fout "statusbalk: geen badge" ;; esac
+case "$uit" in *"RMOS ]"*|*"RMOS 0"*) fout "statusbalk: toont een teller waar niets bekend is" ;; *) ok "statusbalk: geen verzonnen teller" ;; esac
+
+printf 'RMOS WIJZIGINGEN\n\nWACHT OP JOU (4) — werk dat stilstaat\n' | bash "$PT"
+case "$(bash "$SL")" in *"RMOS 4"*) ok "statusbalk: teller uit een boot-check" ;; *) fout "statusbalk: teller niet overgenomen" ;; esac
+
+printf 'RMOS 1.3.0 · niets veranderd sinds jouw laatste sessie en niets dat op jou wacht.\n' | bash "$PT"
+case "$(bash "$SL")" in *"RMOS 4"*) fout "statusbalk: oude teller bleef staan na een stille check" ;; *) ok "statusbalk: teller op nul na een stille check" ;; esac
+
+printf 'RMOS ZOEKRESULTAAT · niets te maken met de boot-check\n' | bash "$PT"
+[ -f "$CLAUDE_CONFIG_DIR/.rmos-status" ] && ok "statusbalk: andere tools laten de stand met rust" || fout "statusbalk: stand verdween"
+printf '%s 9\n' "$(( $(date +%s) - 46800 ))" > "$CLAUDE_CONFIG_DIR/.rmos-status"
+case "$(bash "$SL")" in *"RMOS 9"*) fout "statusbalk: toont een teller van 13 uur oud" ;; *) ok "statusbalk: verouderde teller vervalt" ;; esac
+unset CLAUDE_CONFIG_DIR
+
+# 7. de manifesten moeten geldige JSON zijn, anders weigert Claude Code de plugin
 for f in .claude-plugin/marketplace.json rmos/.claude-plugin/plugin.json rmos/hooks/hooks.json; do
   p="$(dirname "$0")/$f"
   if python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$p" 2>/dev/null; then
@@ -58,7 +79,7 @@ for f in .claude-plugin/marketplace.json rmos/.claude-plugin/plugin.json rmos/ho
   fi
 done
 
-# 7. hooks.json moet naar een bestaand script wijzen
+# 8. hooks.json moet naar een bestaand script wijzen
 if grep -q 'boot.sh' "$(dirname "$0")/rmos/hooks/hooks.json" && [ -f "$HOOK" ]; then
   ok "hooks.json wijst naar een bestaande boot.sh"
 else
