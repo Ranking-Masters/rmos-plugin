@@ -1,0 +1,10 @@
+{
+  "name": "rmos",
+  "description": "Ranking Masters OS: bij sessiestart vertelt RMOS wat er veranderde, en bij een nieuwe taak wat er al bestaat. Vereist de RMOS-connector.",
+  "version": "2.0.0",
+  "author": {
+    "name": "Ranking Masters",
+    "url": "https://os.rankingmasters.nl"
+  },
+  "homepage": "https://os.rankingmasters.nl/agents"
+}

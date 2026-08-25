@@ -1,0 +1,15 @@
+{
+  "name": "rmos",
+  "description": "Ranking Masters OS — het bedrijfsbrein in elke Claude Code-sessie",
+  "owner": {
+    "name": "Ranking Masters",
+    "url": "https://rankingmasters.nl"
+  },
+  "plugins": [
+    {
+      "name": "rmos",
+      "source": "./rmos",
+      "description": "Checkt bij sessiestart wat er in RMOS veranderde en zoekt bij een nieuwe taak eerst of er al een proces, template of tool voor bestaat"
+    }
+  ]
+}
