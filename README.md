@@ -14,7 +14,7 @@ Bovenstaande regel is de terugvalroute voor wie de organisatie-uitrol nog niet h
 |---|---|
 | `rmos/hooks/boot.sh` | Bij elke sessiestart: draagt de agent op om RMOS te vragen wat er veranderde, en om bij een nieuwe taak eerst te kijken wat er al bestaat. In een git-repo komt er één alinea bij die de nadruk op dat tweede legt. |
 | `rmos/skills/rmos-nieuwe-taak` | Neemt het over zodra de bootinjectie is vervaagd: bij elke nieuwe taak eerst `rmos_start`. |
-| `rmos/hooks/post-tool.sh` | Onthoudt uit een RMOS-antwoord hoeveel er op je wacht, en dat de connector antwoordde. |
+| `rmos/hooks/post-tool.sh` | Onthoudt uit élk RMOS-antwoord hoeveel er op je wacht, en dat de connector antwoordde. |
 | `rmos/hooks/post-tool-fail.sh` | Onthoudt dat een RMOS-call faalde, zodat een losse connector niet stil blijft. |
 | `rmos/hooks/statusline.sh` | De badge in je statusbalk, klikbaar naar RMOS. |
 | `rmos/hooks/refresh.sh` | Vraagt de agent de teller te verversen als die oud is. |
@@ -127,7 +127,7 @@ Zo live als het kan zonder een sleutel op zeventien laptops. Drie lagen, en het 
 
 Dat laatste is de eerlijke grens. De teller komt uit een RMOS-antwoord, en dat antwoord komt alleen als de agent RMOS aanroept. Dient een collega om 11:00 iets in, dan weet jouw balk dat om 15:00 nog niet.
 
-Daarom vraagt `refresh.sh` bij je volgende bericht één keer om een verversing zodra de teller ouder is dan tien minuten. Eén regel instructie, maximaal één keer per interval, overal waar je werkt — een teller verouderd in een repo net zo hard als daarbuiten. In de praktijk: je werkt, je typt, de teller loopt mee.
+Sinds de server onder elk antwoord één regel meestuurt — `RMOS-stand: N punten wachten op jou` — verjongt de teller bij elke RMOS-aanroep die je agent toch al doet. Vraag je tussendoor iets aan RMOS, dan loopt de balk daarmee mee zonder extra call. Blijft het langer stil, dan vraagt `refresh.sh` bij je volgende bericht één keer om een verversing zodra de teller ouder is dan tien minuten. Eén regel instructie, maximaal één keer per interval, overal waar je werkt — een teller verouderd in een repo net zo hard als daarbuiten. In de praktijk: je werkt, je typt, de teller loopt mee.
 
 | Knop | Wat het doet |
 |---|---|

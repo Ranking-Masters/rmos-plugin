@@ -103,6 +103,16 @@ case "$(bash "$SL")" in *"RMOS 4"*) ok "statusbalk: teller uit een boot-check" ;
 payload mcp__claude_ai_RMOS__rmos_changes 'RMOS 1.3.0 - niets veranderd sinds jouw laatste sessie' | bash "$PT"
 case "$(bash "$SL")" in *"RMOS 4"*) fout "statusbalk: oude teller bleef staan na een stille check" ;; *) ok "statusbalk: teller op nul na een stille check" ;; esac
 
+# 6b. de staartregel: elke RMOS-tool verjongt de teller, niet alleen de boot-check
+payload mcp__claude_ai_RMOS__rmos_find 'ZOEKRESULTAAT\n\n1. Iets\n\nRMOS-stand: 7 punten wachten op jou -> https://os.rankingmasters.nl/inbox' | bash "$PT"
+case "$(bash "$SL")" in *"RMOS 7"*) ok "statusbalk: teller uit de staartregel van rmos_find" ;; *) fout "statusbalk: staartregel niet gelezen — de teller leeft dan alleen bij sessiestart" ;; esac
+payload mcp__claude_ai_RMOS__rmos_read 'DOCUMENT\n\nRMOS-stand: 0 punten wachten op jou' | bash "$PT"
+case "$(bash "$SL")" in *"RMOS 0"*|*"RMOS 7"*) fout "statusbalk: nul uit de staartregel niet overgenomen" ;; *) ok "statusbalk: nul uit de staartregel wist de oude teller" ;; esac
+case "$(bash "$SL")" in *"38;5;108"*) ok "statusbalk: groen na een verse nul" ;; *) fout "statusbalk: niet groen na een verse nul" ;; esac
+# een teller in een gewone Bash-call blijft buiten de deur, ook in deze vorm
+payload Bash 'RMOS-stand: 42 punten wachten op jou' | bash "$PT"
+case "$(bash "$SL")" in *"RMOS 42"*) fout "statusbalk: Bash-call schreef via de staartregel" ;; *) ok "statusbalk: staartregel geldt alleen voor RMOS-tools" ;; esac
+
 # Een andere tool die het woord RMOS in zijn output heeft — een collega die dit
 # script leest — mag de stand niet aanraken. Dat was de gate op tekst in plaats
 # van op toolnaam.

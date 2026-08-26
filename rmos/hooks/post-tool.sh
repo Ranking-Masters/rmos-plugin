@@ -1,6 +1,7 @@
 #!/bin/bash
 # Vangt het antwoord van een RMOS-tool op en onthoudt twee dingen: hoeveel er op
-# deze persoon wacht, en dat de connector nog antwoordde. De statusbalk leest dat
+# deze persoon wacht, en dat de connector nog antwoordde. Elke RMOS-aanroep telt,
+# niet alleen de boot-check — de teller verjongt dus terwijl je gewoon werkt. De statusbalk leest dat
 # zonder zelf te hoeven bellen.
 #
 # Bewust géén tweede bron van waarheid: dit is een gecachet gétal uit een
@@ -42,15 +43,29 @@ gezet=""; aantal=""
 [ -f "$stand" ] && read -r gezet aantal _ _ < "$stand" 2>/dev/null || true
 case "${gezet}${aantal}" in *[!0-9]*|"") gezet=""; aantal="" ;; esac
 
-# Alleen het antwoord van de boot-check bevat een teller. "WACHT OP JOU (3)" → 3.
-# Staat het blok er niet in een boot-check-antwoord, dan wacht er niets op deze
-# persoon: dat is een geldige uitkomst en hoort óók vastgelegd te worden, anders
-# blijft er een oud getal in de balk staan.
+# Elke RMOS-tool behalve de boot-check sluit af met "RMOS-stand: N punten". Dat
+# is er bij gekomen omdat de teller anders alleen uit de sessiestart kwam: dient
+# een collega om 11:00 iets in en vraag jij om 11:02 iets aan RMOS, dan wist je
+# balk het nog niet. Nu verjongt elke aanroep hem, zonder extra call.
+#
+# Die regel is met opzet ASCII. Deze payload komt als JSON binnen en een encoder
+# die non-ASCII naar \uXXXX schrijft, zou een teller met een middenpunt erin
+# stil onleesbaar maken — de faalmodus die je nooit ziet.
+n=$(printf '%s' "$payload" | grep -oE 'RMOS-stand: [0-9]+ punten' | head -1 | grep -oE '[0-9]+' || true)
+if [ -n "$n" ]; then
+  gezet="$nu"; aantal="$n"
+fi
+
+# En de boot-check, die zijn eigen kop heeft: "WACHT OP JOU (3)" → 3. Die twee
+# sluiten elkaar uit — rmos_changes krijgt geen staartregel, juist omdat zijn
+# stille pad één regel moet blijven. Staat het blok er niet in een boot-check-
+# antwoord, dan wacht er niets: dat is een geldige uitkomst en hoort óók
+# vastgelegd, anders blijft er een oud getal in de balk staan.
 case "$payload" in
   *"RMOS WIJZIGINGEN"*|*"niets veranderd sinds jouw laatste sessie"*|*"niets veranderd in de kennis"*|*"eerste keer dat deze toegang verbindt"*)
-    n=$(printf '%s' "$payload" | grep -oE 'WACHT OP JOU \(([0-9]+)\)' | head -1 | grep -oE '[0-9]+' || true)
-    [ -n "$n" ] || n=0
-    gezet="$nu"; aantal="$n"
+    b=$(printf '%s' "$payload" | grep -oE 'WACHT OP JOU \(([0-9]+)\)' | head -1 | grep -oE '[0-9]+' || true)
+    [ -n "$b" ] || b=0
+    gezet="$nu"; aantal="$b"
     ;;
 esac
 
