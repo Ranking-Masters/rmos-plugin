@@ -36,14 +36,7 @@ Waarom: beide faalmodi van de hook zijn stil. Zwijgt hij overal, dan is de featu
 
 ## De badge in je statusbalk
 
-Zodat je ziet dát RMOS meedraait, of er iets op je wacht, en of de connector nog antwoordt. Eén regel in `~/.claude/settings.json`:
-
-```json
-"statusLine": {
-  "type": "command",
-  "command": "bash -c 'for d in \"$HOME\"/.claude/plugins/cache/*/rmos/*/hooks/statusline.sh; do [ -f \"$d\" ] && [ ! -e \"${d%/hooks/statusline.sh}/.orphaned_at\" ] && s=\"$d\"; done; [ -n \"${s:-}\" ] && bash \"$s\"; for p in \"$HOME\"/.claude/plugins/cache/ponytail/ponytail/*/hooks/ponytail-statusline.sh; do [ -f \"$p\" ] && q=\"$p\"; done; [ -n \"${q:-}\" ] && { printf \" \"; bash \"$q\"; }'"
-}
-```
+Zodat je ziet dát RMOS meedraait, of er iets op je wacht, en of de connector nog antwoordt.
 
 | Je ziet | Wat het betekent |
 |---|---|
@@ -52,15 +45,76 @@ Zodat je ziet dát RMOS meedraait, of er iets op je wacht, en of de connector no
 | `[RMOS !]` rood | de laatste RMOS-call faalde: connector los of niet geautoriseerd. Verbinden: [os.rankingmasters.nl/agents](https://os.rankingmasters.nl/agents) |
 | niets | de plugin staat niet aan |
 
-### Waarom die regel niet in de plugin zelf zit
+De badge hoort niet in jouw persoonlijke config. Zeventien collega's die met de hand een bash-oneliner in hun `settings.json` plakken, is zeventien kansen op een typo en een badge die bij niemand hetzelfde doet. Hij hoort bij de uitrol.
 
-Dat zou logischer zijn, en het kan niet. Claude Code leest `statusLine` alleen uit `settings.json`; in `plugin.json` is het een onbekend veld dat bij het laden wordt genegeerd (`claude plugin validate` zegt dat ook zo), `StatusLine` bestaat niet als hook-event, en een plugin-`settings.json` mag alleen `agent` en `subagentStatusLine` zetten. Nagekeken op Claude Code 2.1.246; verandert dat, dan hoort deze regel te verhuizen.
+### De route: organisatie (dit is de normale)
 
-Gevolg: de regel in `settings.json` is dom en het script is slim. Het script controleert zelf of het nog bij een levende plugin hoort en zwijgt anders. Dat is nodig omdat Claude Code de cachemap na een uninstall laat staan tot geen sessie hem meer vasthoudt — de badge bleef daardoor staan bij een plugin die niet meer geladen was, en een badge die liegt is erger dan geen badge. De glob slaat verweesde mappen over en het script kijkt er nog een tweede keer naar, want de meeste laptops lopen achter met die ene regel.
+Eén blok in [**Admin Settings → Claude Code → Managed settings**](https://claude.ai/admin-settings/claude-code). Vereist de rol Owner of Primary Owner.
 
-Verder zoekt de glob zijn pad met sterretjes in plaats van vaste namen — versie én marketplace, want bij de organisatie-uitrol heet die anders dan bij een handmatige installatie, en met een vast pad verdwijnt de badge stil. En hij draait daarna de ponytail-badge als die er is: Claude Code kent maar één `statusLine`, dus twee badges betekent twee commando's achter elkaar. Gebruik je ponytail niet, dan kun je dat tweede stuk weglaten.
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "bash -c 'for d in \"$HOME\"/.claude/plugins/cache/*/rmos/*/hooks/statusline.sh; do [ -f \"$d\" ] && [ ! -e \"${d%/hooks/statusline.sh}/.orphaned_at\" ] && s=\"$d\"; done; [ -n \"${s:-}\" ] && bash \"$s\"'"
+  }
+}
+```
+
+Twee gevolgen die je vóór het opslaan moet weten, niet erna:
+
+| | |
+|---|---|
+| **Het overschrijft elke persoonlijke `statusLine`** | Managed settings staan bovenaan de hiërarchie en mergen niet. Wie zelf een badge had — ponytail, een git-branch, een tokenteller — verliest die. Dat is de prijs van één uitrol voor iedereen. |
+| **Iedereen krijgt één keer een goedkeuringsdialoog** | `statusLine` voert een shell-commando uit, dus Claude Code vraagt per gebruiker eenmalig toestemming. Wie weigert, bij wie sluit Claude Code af. |
+
+### De route: persoonlijk (terugval)
+
+Werk je buiten de organisatie, of wil je de badge naast je eigen statusbalk, dan zet je hetzelfde commando in `~/.claude/settings.json`. Claude Code kent maar één `statusLine`, dus twee badges betekent twee commando's achter elkaar:
+
+```json
+"statusLine": {
+  "type": "command",
+  "command": "bash -c 'for d in \"$HOME\"/.claude/plugins/cache/*/rmos/*/hooks/statusline.sh; do [ -f \"$d\" ] && [ ! -e \"${d%/hooks/statusline.sh}/.orphaned_at\" ] && s=\"$d\"; done; [ -n \"${s:-}\" ] && bash \"$s\"; for p in \"$HOME\"/.claude/plugins/cache/ponytail/ponytail/*/hooks/ponytail-statusline.sh; do [ -f \"$p\" ] && q=\"$p\"; done; [ -n \"${q:-}\" ] && { [ -n \"${s:-}\" ] && printf \" \"; bash \"$q\"; }'"
+}
+```
+
+Bedenk wel dat je dan een andere balk hebt dan je collega's, en dat je de plugin dus niet meer test zoals zij hem krijgen.
+
+### Waarom dit niet in de plugin zelf kan
+
+Dat is de eerste vraag die iedereen hierover stelt, dus hier staat het antwoord in plaats van dat de volgende het opnieuw uitzoekt. Claude Code leest `statusLine` alleen uit een settingsbestand:
+
+| Poging | Uitkomst |
+|---|---|
+| `statusLine` in `plugin.json` | `Unknown field 'statusLine'. Claude Code ignores it at load time.` |
+| `StatusLine` als hook-event | `hooks.StatusLine: Invalid key in record` |
+| Een `settings.json` in de plugin | alleen `agent` en `subagentStatusLine` worden gehonoreerd |
+
+Nagekeken op Claude Code 2.1.246. Verandert dat, dan hoort de badge te verhuizen en mag dit stuk weg.
+
+Gevolg: de settingsregel is dom en het script is slim. Het script controleert zélf of het nog bij een levende plugin hoort en zwijgt anders. Dat is nodig omdat Claude Code de cachemap na een uninstall laat staan tot geen sessie hem meer vasthoudt — de badge bleef daardoor staan bij een plugin die niet meer geladen was, en een badge die liegt is erger dan geen badge. De glob slaat verweesde mappen over en het script kijkt er nog een tweede keer naar, want laptops lopen achter met die ene regel.
+
+De glob zoekt zijn pad met sterretjes in plaats van vaste namen — versie én marketplace — want bij de organisatie-uitrol heet de marketplace anders dan bij een handmatige installatie, en met een vast pad verdwijnt de badge stil.
 
 De teller en de connectorstaat komen uit `~/.claude/.rmos-status`, dat de `PostToolUse`- en `PostToolUseFailure`-hooks schrijven uit een antwoord dat je agent tóch al ophaalde. Dus geen sleutel op schijf en geen netwerkcall in je statusbalk. Beide verlopen na twaalf uur, elk op hun eigen klok: een teller van gisteren is geen teller van vandaag, en een storing van gisteravond is geen storing van nu. Onbekend is geen nul.
+
+## Landt de uitrol niet?
+
+De organisatie-uitrol loopt via managed settings. Staat daar niets, dan komt er bij niemand een plugin binnen — ook niet als de marketplace onder **Libraries & Access → Plugins** netjes "Synced" en "Installed by default" toont. Dat zijn twee verschillende schakelaars, en dat is precies de valkuil: de ene ziet er groen uit terwijl de andere leeg is.
+
+Zo zie je aan de clientkant wat er werkelijk binnenkomt:
+
+```
+claude -p ok --debug-file /tmp/cc.txt < /dev/null && grep -i "remote setting" /tmp/cc.txt
+```
+
+| Wat je leest | Wat het betekent |
+|---|---|
+| `No settings found (404)` | er staat niets in Managed settings. Niets landt, bij niemand |
+| `Saved empty sentinel (404 response)` | de `{}` in `~/.claude/remote-settings.json` is een sentinel na die 404, geen leeg antwoord |
+| een payload | de aflevering werkt; ontbreekt de plugin dan nog, dan missen de keys zelf |
+
+Let bij het toevoegen van `extraKnownMarketplaces` op één ding: deze repo is privé. Verwijst de marketplace naar GitHub, dan moet elke client hem zelf klonen en heeft dus repo-toegang nodig. De org-sync spiegelt de bestanden aan de kant van claude.ai en heeft die toegang niet nodig — dat is de reden dat de repo privé staat, en die winst gooi je met een GitHub-verwijzing weg.
 
 ## Uitzetten
 
