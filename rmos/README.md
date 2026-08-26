@@ -21,7 +21,9 @@ Dat betekent ook: **zonder verbonden RMOS-connector doet deze plugin niets nutti
 claude plugin marketplace add Ranking-Masters/rmos-plugin && claude plugin install rmos@rmos
 ```
 
-Eén regel voor je terminal, dus in één keer te plakken. Doe je het binnen Claude Code met `/plugin`, geef de twee commando's dan **één voor één** — het eerste opent een venster, en een tweede regel belandt in dat invoerveld.
+**De gewone route is dit niet.** Deze plugin wordt via **claude.ai → Organization settings → Plugins** naar de hele organisatie gesynct, dus hij staat al in je `/plugin`-lijst en je hoeft hem alleen aan te zetten. Geen marketplace toevoegen, geen commando.
+
+Bovenstaande regel is de terugvalroute voor wie de organisatie-uitrol nog niet heeft én toegang heeft tot deze (privé) repo. Doe je het binnen Claude Code met `/plugin`, geef de twee commando's dan **één voor één** — het eerste opent een venster, en een tweede regel belandt in dat invoerveld.
 
 Daarna geldt het in elke map, ook in nieuwe. Updates komen vanzelf mee.
 
