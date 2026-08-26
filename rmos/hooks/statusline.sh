@@ -2,16 +2,16 @@
 # RMOS-badge voor de statusbalk.
 #
 # Drie dingen zichtbaar maken: dat RMOS meedraait, of er iets op je wacht, en of
-# de connector nog antwoordt. Dat eerste is de helft van de waarde — een collega
-# die niet weet of de plugin aan staat, gaat het navragen, en navragen is precies
-# wat hier weg moest.
+# de connector nog antwoordt. En bij het tweede: er in één klik naartoe kunnen.
+# Een badge die zegt "er wachten drie dingen" en je daarna zelf laat zoeken,
+# kost meer aandacht dan hij oplevert.
 #
 # Claude Code kent maar één `statusLine` en die staat per definitie in iemands
-# persoonlijke settings.json: een plugin mag dat veld niet zetten (`plugin.json`
-# noemt het een onbekend veld en negeert het, en `StatusLine` is geen hook-event).
-# Gevolg: de regel in settings.json roept dit script aan, en dit script moet dus
-# zélf weten of het nog bij een levende plugin hoort. Anders blijft de badge
-# staan na een uninstall, en een badge die liegt is erger dan geen badge.
+# settingsbestand: een plugin mag dat veld niet zetten (`plugin.json` noemt het
+# een onbekend veld en negeert het, en `StatusLine` is geen hook-event). Gevolg:
+# de regel in settings.json roept dit script aan, en dit script moet dus zélf
+# weten of het nog bij een levende plugin hoort. Anders blijft de badge staan na
+# een uninstall, en een badge die liegt is erger dan geen badge.
 set -uo pipefail
 
 # Ben ik nog van een levende plugin?
@@ -29,10 +29,27 @@ zelf="${BASH_SOURCE[0]:-$0}"
 wortel="$(cd "$(dirname "$zelf")/.." 2>/dev/null && pwd)" || wortel=""
 [ -n "$wortel" ] && [ -e "$wortel/.orphaned_at" ] && exit 0
 
-GROEN='\033[38;5;108m'
-ORANJE='\033[38;5;208m'
-ROOD='\033[38;5;167m'
-UIT='\033[0m'
+# Escapes als echte tekens, niet als printf-format. Zo kan er geen URL met een
+# procentteken of backslash tussendoor glippen en de balk slopen.
+ESC=$'\033'
+BEL=$'\a'
+GROEN="${ESC}[38;5;108m"
+ORANJE="${ESC}[38;5;208m"
+ROOD="${ESC}[38;5;167m"
+UIT="${ESC}[0m"
+
+basis="${RMOS_URL:-https://os.rankingmasters.nl}"
+basis="${basis%/}"
+
+# Klikbaar maken met OSC 8, maar alleen waar dat aankomt. In een terminal die
+# het niet kent — Terminal.app bijvoorbeeld — zou de escape als rommel in de
+# balk staan, en dan is de badge slechter af dan zonder link. Onbekend telt
+# daarom als "niet ondersteund"; RMOS_BADGE_LINK=1 forceert, 0 zet het uit.
+link_kan=0
+case "${TERM_PROGRAM:-}${KITTY_WINDOW_ID:+ kitty}${WT_SESSION:+ wt}${VTE_VERSION:+ vte}" in
+  *WarpTerminal*|*iTerm*|*WezTerm*|*ghostty*|*vscode*|*Hyper*|*kitty*|*wt*|*vte*) link_kan=1 ;;
+esac
+case "${RMOS_BADGE_LINK:-}" in 1) link_kan=1 ;; 0) link_kan=0 ;; esac
 
 # Vorm: "<epoch teller> <aantal> <staat> <epoch staat>". Twee klokken, want het
 # zijn twee feiten die apart verlopen: wanneer de teller gemeten is, en wanneer
@@ -58,11 +75,18 @@ if [ -f "$stand" ]; then
 fi
 
 # Een kapotte connector eerst: de teller is dan per definitie oud, en die naast
-# een storing tonen wekt de indruk dat hij nog ergens op gebaseerd is.
+# een storing tonen wekt de indruk dat hij nog ergens op gebaseerd is. De link
+# gaat naar de verbindpagina, want dat is wat je op dat moment moet doen.
 if [ "$staat" = "fail" ]; then
-  printf "${ROOD}[RMOS !]${UIT}"
+  kleur="$ROOD"; label="[RMOS !]"; doel="$basis/agents"
 elif [ -n "$aantal" ] && [ "$aantal" -gt 0 ] 2>/dev/null; then
-  printf "${ORANJE}[RMOS %s]${UIT}" "$aantal"
+  kleur="$ORANJE"; label="[RMOS $aantal]"; doel="$basis/inbox"
 else
-  printf "${GROEN}[RMOS]${UIT}"
+  kleur="$GROEN"; label="[RMOS]"; doel="$basis"
+fi
+
+if [ "$link_kan" = 1 ]; then
+  printf '%s' "${ESC}]8;;${doel}${BEL}${kleur}${label}${UIT}${ESC}]8;;${BEL}"
+else
+  printf '%s' "${kleur}${label}${UIT}"
 fi
