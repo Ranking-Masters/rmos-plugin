@@ -52,22 +52,64 @@ uit4="$(cd "$TMP/rolmap" && PATH="$TMP/bin:$PATH" bash "$HOOK")"; code4=$?
 export CLAUDE_CONFIG_DIR="$TMP/cfg"; mkdir -p "$CLAUDE_CONFIG_DIR"
 SL="$(cd "$(dirname "$0")" && pwd)/rmos/hooks/statusline.sh"
 PT="$(cd "$(dirname "$0")" && pwd)/rmos/hooks/post-tool.sh"
+PF="$(cd "$(dirname "$0")" && pwd)/rmos/hooks/post-tool-fail.sh"
+
+# Hooks krijgen JSON op stdin, niet losse tekst. Testen op de echte vorm, anders
+# toetst de zelftest een payload die in productie niet bestaat.
+payload() { printf '{"hook_event_name":"PostToolUse","tool_name":"%s","tool_response":"%s"}' "$1" "$2"; }
 
 uit="$(bash "$SL")"
 case "$uit" in *RMOS*) ok "statusbalk: toont een badge zonder standbestand" ;; *) fout "statusbalk: geen badge" ;; esac
 case "$uit" in *"RMOS ]"*|*"RMOS 0"*) fout "statusbalk: toont een teller waar niets bekend is" ;; *) ok "statusbalk: geen verzonnen teller" ;; esac
 
-printf 'RMOS WIJZIGINGEN\n\nWACHT OP JOU (4) — werk dat stilstaat\n' | bash "$PT"
+payload mcp__claude_ai_RMOS__rmos_changes 'RMOS WIJZIGINGEN\n\nWACHT OP JOU (4) - werk dat stilstaat' | bash "$PT"
 case "$(bash "$SL")" in *"RMOS 4"*) ok "statusbalk: teller uit een boot-check" ;; *) fout "statusbalk: teller niet overgenomen" ;; esac
 
-printf 'RMOS 1.3.0 · niets veranderd sinds jouw laatste sessie en niets dat op jou wacht.\n' | bash "$PT"
+payload mcp__claude_ai_RMOS__rmos_changes 'RMOS 1.3.0 - niets veranderd sinds jouw laatste sessie' | bash "$PT"
 case "$(bash "$SL")" in *"RMOS 4"*) fout "statusbalk: oude teller bleef staan na een stille check" ;; *) ok "statusbalk: teller op nul na een stille check" ;; esac
 
-printf 'RMOS ZOEKRESULTAAT · niets te maken met de boot-check\n' | bash "$PT"
-[ -f "$CLAUDE_CONFIG_DIR/.rmos-status" ] && ok "statusbalk: andere tools laten de stand met rust" || fout "statusbalk: stand verdween"
-printf '%s 9\n' "$(( $(date +%s) - 46800 ))" > "$CLAUDE_CONFIG_DIR/.rmos-status"
+# Een andere tool die het woord RMOS in zijn output heeft — een collega die dit
+# script leest — mag de stand niet aanraken. Dat was de gate op tekst in plaats
+# van op toolnaam.
+payload mcp__claude_ai_RMOS__rmos_find 'RMOS ZOEKRESULTAAT - niets te maken met de boot-check' | bash "$PT"
+[ -f "$CLAUDE_CONFIG_DIR/.rmos-status" ] && ok "statusbalk: andere RMOS-tools laten de teller met rust" || fout "statusbalk: stand verdween"
+payload Bash 'RMOS WIJZIGINGEN en WACHT OP JOU (99)' | bash "$PT"
+case "$(bash "$SL")" in *"RMOS 99"*) fout "statusbalk: een Bash-call schreef de teller" ;; *) ok "statusbalk: niet-RMOS-tools schrijven niets" ;; esac
+
+printf '%s 9 ok %s\n' "$(( $(date +%s) - 46800 ))" "$(date +%s)" > "$CLAUDE_CONFIG_DIR/.rmos-status"
 case "$(bash "$SL")" in *"RMOS 9"*) fout "statusbalk: toont een teller van 13 uur oud" ;; *) ok "statusbalk: verouderde teller vervalt" ;; esac
+
+# 6b. een kapotte connector: de plugin doet dan niets nuttigs, dus dat hoort te zien
+payload mcp__claude_ai_RMOS__rmos_start 'MCP error: not authenticated' | bash "$PF"
+case "$(bash "$SL")" in *"RMOS !"*) ok "statusbalk: storing zichtbaar na een gefaalde RMOS-call" ;; *) fout "statusbalk: gefaalde RMOS-call blijft onzichtbaar" ;; esac
+
+payload mcp__claude_ai_RMOS__rmos_changes 'RMOS WIJZIGINGEN\n\nWACHT OP JOU (2) - werk dat stilstaat' | bash "$PT"
+case "$(bash "$SL")" in
+  *"RMOS !"*) fout "statusbalk: storing bleef staan na een geslaagde call" ;;
+  *"RMOS 2"*) ok "statusbalk: geslaagde call wist de storing en zet de teller" ;;
+  *)          fout "statusbalk: onverwachte weergave na herstel" ;;
+esac
+
+payload Bash 'exit 127' | bash "$PF"
+case "$(bash "$SL")" in *"RMOS !"*) fout "statusbalk: een gefaalde Bash-call gold als connectorstoring" ;; *) ok "statusbalk: alleen RMOS-tools melden een storing" ;; esac
+
+printf '%s 2 fail %s\n' "$(date +%s)" "$(( $(date +%s) - 46800 ))" > "$CLAUDE_CONFIG_DIR/.rmos-status"
+case "$(bash "$SL")" in *"RMOS !"*) fout "statusbalk: toont een storing van 13 uur oud" ;; *) ok "statusbalk: verouderde storing vervalt" ;; esac
+
+# 6c. een bestand van de vorige versie heeft twee kolommen en moet blijven werken
+printf '%s 5\n' "$(date +%s)" > "$CLAUDE_CONFIG_DIR/.rmos-status"
+case "$(bash "$SL")" in *"RMOS 5"*) ok "statusbalk: leest een standbestand van de vorige versie" ;; *) fout "statusbalk: oud standbestand niet meer leesbaar" ;; esac
 unset CLAUDE_CONFIG_DIR
+
+# 6d. de dragende reden dat dit script zijn eigen levendheid checkt: na een
+#     uninstall blijft de cachemap staan tot geen sessie hem vasthoudt, en de
+#     glob in settings.json vindt hem dan nog. Bleef de badge staan, dan meldt
+#     hij een plugin die niet geladen is — en dat was precies de bug.
+mkdir -p "$TMP/wees/hooks"
+cp "$SL" "$TMP/wees/hooks/statusline.sh"
+[ -n "$(bash "$TMP/wees/hooks/statusline.sh")" ] && ok "statusbalk: spreekt in een levende pluginmap" || fout "statusbalk: zwijgt in een levende pluginmap"
+touch "$TMP/wees/.orphaned_at"
+[ -z "$(bash "$TMP/wees/hooks/statusline.sh")" ] && ok "statusbalk: zwijgt in een verweesde pluginmap" || fout "statusbalk: badge blijft staan na uninstall"
 
 # 7. de manifesten moeten geldige JSON zijn, anders weigert Claude Code de plugin
 for f in .claude-plugin/marketplace.json rmos/.claude-plugin/plugin.json rmos/hooks/hooks.json; do
@@ -79,12 +121,16 @@ for f in .claude-plugin/marketplace.json rmos/.claude-plugin/plugin.json rmos/ho
   fi
 done
 
-# 8. hooks.json moet naar een bestaand script wijzen
-if grep -q 'boot.sh' "$(dirname "$0")/rmos/hooks/hooks.json" && [ -f "$HOOK" ]; then
-  ok "hooks.json wijst naar een bestaande boot.sh"
-else
-  fout "hooks.json en boot.sh lopen uit elkaar"
-fi
+# 8. hooks.json moet naar bestaande scripts wijzen — een typo hier is een hook
+#    die stil nooit vuurt
+H="$(dirname "$0")/rmos/hooks/hooks.json"
+for s in boot.sh post-tool.sh post-tool-fail.sh; do
+  if grep -q "$s" "$H" && [ -f "$(dirname "$0")/rmos/hooks/$s" ]; then
+    ok "hooks.json wijst naar een bestaande $s"
+  else
+    fout "hooks.json en $s lopen uit elkaar"
+  fi
+done
 
 echo
 if [ $fouten -eq 0 ]; then echo "Alles goed."; else echo "$fouten controle(s) gefaald."; exit 1; fi
