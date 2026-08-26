@@ -92,7 +92,10 @@ case "$uit" in *"RMOS ]"*|*"RMOS 0"*) fout "statusbalk: toont een teller waar ni
 #     iets had gezegd. Groen mag alleen bij een actuele teller op nul.
 case "$uit" in *"RMOS ·"*)   ok "statusbalk: dof zolang RMOS niets gezegd heeft" ;; *) fout "statusbalk: geen dof-staat, dan liegt groen" ;; esac
 case "$uit" in *"38;5;108"*) fout "statusbalk: groen zonder één antwoord van RMOS" ;; *) ok "statusbalk: niet groen zonder antwoord" ;; esac
-case "$uit" in *"/agents"*)  ok "statusbalk: dof linkt naar de verbinduitleg" ;; *) fout "statusbalk: dof linkt niet naar /agents" ;; esac
+# link geforceerd, want anders toetst deze regel de terminal van wie de test
+# draait in plaats van het doel van de badge — precies zoals dit lokaal groen
+# was in Warp en op de runner rood.
+case "$(RMOS_BADGE_LINK=1 bash "$SL")" in *']8;;'*"/agents"*) ok "statusbalk: dof linkt naar de verbinduitleg" ;; *) fout "statusbalk: dof linkt niet naar /agents" ;; esac
 printf '%s 0 ok %s\n' "$(date +%s)" "$(date +%s)" > "$CLAUDE_CONFIG_DIR/.rmos-status"
 case "$(bash "$SL")" in *"38;5;108"*) ok "statusbalk: groen bij een actuele teller op nul" ;; *) fout "statusbalk: niet groen terwijl er niets wacht" ;; esac
 rm -f "$CLAUDE_CONFIG_DIR/.rmos-status"
