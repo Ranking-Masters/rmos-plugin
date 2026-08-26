@@ -66,6 +66,64 @@ uit4="$(cd "$TMP/code" && PATH="$TMP/bin:$PATH" bash "$HOOK")"; code4=$?
 [ -n "$uit4" ] && ok "git faalt: spreekt alsnog" || fout "git faalt: zwijgt, en dan hangt het vuren tóch aan git"
 case "$uit4" in *rmos_changes*) ok "git faalt: opdracht is intact" ;; *) fout "git faalt: opdracht kwijt" ;; esac
 
+# 5a. de diagnose die één collega stil zonder RMOS liet zitten. Wie RMOS destijds
+#     zelf toevoegde, heeft een server 'rmos' in ~/.claude.json; Claude Code
+#     verbergt de connector van de organisatie dan als duplicaat en dan zijn er
+#     nul rmos_-tools terwijl alles goed lijkt te staan.
+mkdir -p "$TMP/thuis-vies" "$TMP/thuis-schoon" "$TMP/thuis-leeg"
+python3 - "$TMP" <<'PYEOF'
+import json, io, os, sys
+t = sys.argv[1]
+io.open(os.path.join(t, "thuis-vies", ".claude.json"), "w", encoding="utf-8").write(json.dumps({
+  "mcpServers": {"meta-ads": {"url": "https://meta.example/mcp"},
+                 "rmos": {"type": "http", "url": "https://os.rankingmasters.nl/mcp"}}}))
+# de valstrik: ~/.claude.json bewaart ook getypte prompts, dus grep op de URL
+# zou hier een valse melding geven
+io.open(os.path.join(t, "thuis-schoon", ".claude.json"), "w", encoding="utf-8").write(json.dumps({
+  "mcpServers": {"meta-ads": {"url": "https://meta.example/mcp"}},
+  "projects": {"/ergens": {"history": [{"display": "kijk op os.rankingmasters.nl/landing"}]}}}))
+PYEOF
+
+uitv="$(cd "$TMP/rolmap" && HOME="$TMP/thuis-vies" bash "$HOOK")"
+case "$uitv" in *"claude mcp remove rmos"*) ok "eigen rmos-entry: noemt het exacte commando" ;; *) fout "eigen rmos-entry: geen commando, dan blijft die collega stil zonder RMOS" ;; esac
+case "$uitv" in *"EERST DIT"*) ok "eigen rmos-entry: staat vooraan" ;; *) fout "eigen rmos-entry: niet vooraan, dan wordt het overgeslagen" ;; esac
+case "$uitv" in *rmos_changes*) ok "eigen rmos-entry: de rest van de opdracht blijft staan" ;; *) fout "eigen rmos-entry: overschrijft de opdracht" ;; esac
+
+uits="$(cd "$TMP/rolmap" && HOME="$TMP/thuis-schoon" bash "$HOOK")"
+case "$uits" in *"claude mcp remove"*) fout "schone config: valse melding (URL in getypte historie)" ;; *) ok "schone config: geen valse melding" ;; esac
+
+uitl="$(cd "$TMP/rolmap" && HOME="$TMP/thuis-leeg" bash "$HOOK")"
+case "$uitl" in *"claude mcp remove"*) fout "geen config: valse melding" ;; *) ok "geen config: geen melding" ;; esac
+[ -n "$uitl" ] && ok "geen config: de opdracht komt er nog" || fout "geen config: hook zwijgt helemaal"
+
+# Ontbreekt of faalt python3, dan mag de diagnose wegblijven maar de opdracht
+# niet. Twee echte varianten: een stukkende python3 vóór in PATH, en een PATH
+# zonder python3 maar met de rest van het systeem. (PATH helemaal leegmaken
+# toetst niets nuttigs — dan is er ook geen `cat` voor de heredocs, en een
+# machine zonder coreutils draait geen Claude Code.)
+mkdir -p "$TMP/stukbin"
+printf '#!/bin/sh\nexit 127\n' > "$TMP/stukbin/python3" && chmod +x "$TMP/stukbin/python3"
+uitp="$(cd "$TMP/rolmap" && HOME="$TMP/thuis-vies" PATH="$TMP/stukbin:$PATH" bash "$HOOK")"
+case "$uitp" in *rmos_changes*) ok "stukke python3: opdracht blijft intact" ;; *) fout "stukke python3: hook valt om" ;; esac
+case "$uitp" in *"claude mcp remove"*) fout "stukke python3: diagnose alsnog geprint" ;; *) ok "stukke python3: diagnose blijft stil" ;; esac
+
+echte_py="$(command -v python3 || true)"
+if [ -n "$echte_py" ]; then
+  zonder="$(dirname "$echte_py")"
+  schoon_pad="$(printf '%s' "$PATH" | tr ':' '\n' | grep -v "^${zonder}$" | paste -sd: -)"
+  uitz="$(cd "$TMP/rolmap" && HOME="$TMP/thuis-vies" PATH="$schoon_pad" bash "$HOOK" 2>/dev/null)"
+  case "$uitz" in *rmos_changes*) ok "python3 niet in PATH: opdracht blijft intact" ;; *) fout "python3 niet in PATH: hook valt om" ;; esac
+fi
+
+# de melding bij nul tools moet vóór punt 1 staan, anders wordt hij overgeslagen
+geen="$(printf '%s' "$uitl" | grep -n "geen rmos_-tools" | head -1 | cut -d: -f1)"
+een="$(printf '%s' "$uitl" | grep -n "Roep rmos_changes aan" | head -1 | cut -d: -f1)"
+if [ -n "$geen" ] && [ -n "$een" ] && [ "$geen" -lt "$een" ]; then
+  ok "melding bij nul tools staat vóór de opdracht"
+else
+  fout "melding bij nul tools staat niet vooraan (regel ${geen:-?} vs ${een:-?})"
+fi
+
 # 5b. de uitweg moet werken, anders heeft niemand een antwoord op de privacyvraag
 uit5="$(cd "$TMP/rolmap" && RMOS_BOOT=0 bash "$HOOK")"; code5=$?
 [ $code5 -eq 0 ] && ok "RMOS_BOOT=0: exit 0" || fout "RMOS_BOOT=0: exit $code5"
@@ -236,6 +294,7 @@ done
 # 8. hooks.json moet naar bestaande scripts wijzen — een typo hier is een hook
 #    die stil nooit vuurt
 H="$(dirname "$0")/rmos/hooks/hooks.json"
+[ -f "$(dirname "$0")/rmos/hooks/eigen-rmos.py" ] && ok "eigen-rmos.py wordt meegeleverd" || fout "eigen-rmos.py ontbreekt, dan is de diagnose dood"
 for s in boot.sh post-tool.sh post-tool-fail.sh refresh.sh; do
   if grep -q "$s" "$H" && [ -f "$(dirname "$0")/rmos/hooks/$s" ]; then
     ok "hooks.json wijst naar een bestaande $s"

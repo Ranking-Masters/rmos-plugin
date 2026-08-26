@@ -12,6 +12,7 @@ Bovenstaande regel is de terugvalroute voor wie de organisatie-uitrol nog niet h
 
 | Onderdeel | Wat het doet |
 |---|---|
+| `rmos/hooks/eigen-rmos.py` | Kijkt of er een eigen RMOS-server in `~/.claude.json` staat, want die verbergt de connector van de organisatie. |
 | `rmos/hooks/boot.sh` | Bij elke sessiestart: draagt de agent op om RMOS te vragen wat er veranderde, en om bij een nieuwe taak eerst te kijken wat er al bestaat. In een git-repo komt er één alinea bij die de nadruk op dat tweede legt. |
 | `rmos/skills/rmos-nieuwe-taak` | Neemt het over zodra de bootinjectie is vervaagd: bij elke nieuwe taak eerst `rmos_start`. |
 | `rmos/hooks/post-tool.sh` | Onthoudt uit élk RMOS-antwoord hoeveel er op je wacht, en dat de connector antwoordde. |
@@ -29,7 +30,7 @@ Zonder verbonden RMOS-connector doet deze plugin niets nuttigs. Verbinden: [os.r
 
 ## Zelftest
 
-`./test.sh` — geen framework, één bestand. Hij controleert dat de hook overal spreekt (rolmap, git-repo, submap van een repo, en ook wanneer `git` faalt of ontbreekt), dat de codebase-alinea alleen in een repo meekomt, dat `RMOS_BOOT=0` hem echt stil krijgt, dat de tekst de agent daadwerkelijk naar `rmos_changes` en `rmos_start` stuurt, en dat de manifesten geldige JSON zijn die naar bestaande scripts wijzen. Hij veegt eerst zijn eigen omgeving leeg, zodat een `RMOS_*` variabele in je shell geen valse uitslag kan geven. Draait ook op elke push via GitHub Actions.
+`./test.sh` — geen framework, één bestand. Hij controleert dat een eigen `rmos`-entry in `~/.claude.json` wordt opgemerkt mét het exacte herstelcommando, dat een URL in getypte historie géén valse melding geeft, dat een stukke of ontbrekende python3 de opdracht intact laat, dat de melding bij nul tools vóór de opdracht staat, dat de hook overal spreekt (rolmap, git-repo, submap van een repo, en ook wanneer `git` faalt of ontbreekt), dat de codebase-alinea alleen in een repo meekomt, dat `RMOS_BOOT=0` hem echt stil krijgt, dat de tekst de agent daadwerkelijk naar `rmos_changes` en `rmos_start` stuurt, en dat de manifesten geldige JSON zijn die naar bestaande scripts wijzen. Hij veegt eerst zijn eigen omgeving leeg, zodat een `RMOS_*` variabele in je shell geen valse uitslag kan geven. Draait ook op elke push via GitHub Actions.
 
 Voor de badge staan de leugens erin die hij niet mag vertellen: een teller verzinnen waar niets bekend is, groen staan terwijl RMOS nog geen woord gezegd heeft, een teller van dertien uur oud tonen, een storing van gisteravond tonen, een gefaalde `Bash`-call als connectorstoring lezen, een gewone tool de teller laten overschrijven, en blijven staan in een verweesde pluginmap.
 
