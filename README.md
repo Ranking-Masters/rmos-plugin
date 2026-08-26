@@ -8,7 +8,7 @@ claude plugin marketplace add Ranking-Masters/rmos-plugin && claude plugin insta
 
 **De gewone route is dit niet.** Deze plugin wordt via **claude.ai → Organization settings → Plugins** naar de hele organisatie gesynct, dus hij staat al in je `/plugin`-lijst en je hoeft hem alleen aan te zetten. Geen marketplace toevoegen, geen commando.
 
-Bovenstaande regel is de terugvalroute voor wie de organisatie-uitrol nog niet heeft. De repo is publiek, dus daar is geen GitHub-toegang voor nodig — dat is precies waarom hij publiek staat: de organisatie-uitrol laat elke client zelf klonen, en met een privé-repo had iedere collega repo-rechten en een ingelogde git nodig gehad. Doe je het binnen Claude Code met `/plugin`, geef de twee commando's dan **één voor één** — het eerste opent een venster, en een tweede regel belandt in dat invoerveld.
+Bovenstaande regel is de terugvalroute voor wie de organisatie-uitrol nog niet heeft **en** toegang tot deze repo. Die is namelijk privé, en dat moet: claude.ai laat bij *Sync from GitHub* alleen privé en interne repo's kiezen. Dat is geen probleem voor de gewone route — org-sync leest de repo via de Claude GitHub App en levert de plugin ingepakt aan je leden, dus daar zijn geen git-credentials bij betrokken. Krijg je op de terugvalroute een toegangsfout, dan is dat het antwoord: het hoort via de organisatie te komen. Doe je het binnen Claude Code met `/plugin`, geef de twee commando's dan **één voor één** — het eerste opent een venster, en een tweede regel belandt in dat invoerveld.
 
 | Onderdeel | Wat het doet |
 |---|---|
@@ -135,7 +135,9 @@ Daarom vraagt `refresh.sh` bij je volgende bericht één keer om een verversing 
 
 **Waarom de balk niet zelf belt.** Dat zou echt live zijn, en het kost een sleutel. De RMOS-verbinding loopt via je claude.ai-token in de keychain; dat in een shellscript trekken zet een credential op elke laptop van het bureau, voor een getal in een balk. De agent ís de geauthenticeerde weg naar RMOS — deze hook geeft hem alleen een zetje.
 
-**Wat een klik niet doet.** Fix je iets op os.rankingmasters.nl en kom je terug, dan wordt de badge groen bij je volgende bericht, niet terwijl je ernaar kijkt. Wil je dat wél, dan is de route niet pollen maar pushen: RMOS kan met [Channels](https://code.claude.com/docs/en/settings-reference) een bericht in een lopende sessie duwen over de verbinding die er toch al is. Dat is werk aan de RMOS-server, niet aan deze plugin, en het is de enige weg naar echt live zonder credential.
+**Wat een klik niet doet.** Fix je iets op os.rankingmasters.nl en kom je terug, dan wordt de badge groen bij je volgende bericht, niet terwijl je ernaar kijkt.
+
+Echt live vraagt pushen in plaats van pollen, en daarvoor bestaat [Channels](https://code.claude.com/docs/en/channels-reference). Maar let op wat dat is: een channel is een **lokale** MCP-server die Claude Code als subprocess start over stdio. De RMOS-connector is een remote server en kan dus zelf geen channel zijn. Een channel voor RMOS zou een tweede, lokaal proces zijn dat op zijn eigen gezag bij RMOS aanklopt — en dan zijn we terug bij een credential op elke laptop, precies wat hier vermeden is. Bovendien staan eigen channels in de research preview niet op de allowlist: iedereen zou Claude Code met `--dangerously-load-development-channels` moeten starten. Zolang dat zo is, is dit geen route voor een team van zeventien.
 
 **Klikbaar, maar niet overal.** OSC 8-hyperlinks werken in Warp, iTerm2, WezTerm, kitty, ghostty, VS Code, Windows Terminal en VTE-terminals. Terminal.app kent ze niet en zou de escape als rommel tonen, dus onbekende terminals krijgen een platte badge. `RMOS_BADGE_LINK=1` forceert, `0` zet het uit.
 
