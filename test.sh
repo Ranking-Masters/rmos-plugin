@@ -111,6 +111,66 @@ cp "$SL" "$TMP/wees/hooks/statusline.sh"
 touch "$TMP/wees/.orphaned_at"
 [ -z "$(bash "$TMP/wees/hooks/statusline.sh")" ] && ok "statusbalk: zwijgt in een verweesde pluginmap" || fout "statusbalk: badge blijft staan na uninstall"
 
+# 6e. klikbaar: een badge die zegt "er wachten drie dingen" en je daarna zelf
+#     laat zoeken, kost meer aandacht dan hij oplevert. Maar de escape mag
+#     alleen naar buiten waar de terminal hem kent, anders staat er rommel.
+export CLAUDE_CONFIG_DIR="$TMP/cfg2"; mkdir -p "$CLAUDE_CONFIG_DIR"
+nu=$(date +%s)
+
+printf '%s 0 ok %s\n' "$nu" "$nu" > "$CLAUDE_CONFIG_DIR/.rmos-status"
+uit="$(RMOS_BADGE_LINK=1 bash "$SL")"
+case "$uit" in *']8;;https://os.rankingmasters.nl'*) ok "klikbaar: groen linkt naar de basis-URL" ;; *) fout "klikbaar: groen mist de link" ;; esac
+
+printf '%s 3 ok %s\n' "$nu" "$nu" > "$CLAUDE_CONFIG_DIR/.rmos-status"
+uit="$(RMOS_BADGE_LINK=1 bash "$SL")"
+case "$uit" in *']8;;https://os.rankingmasters.nl/inbox'*) ok "klikbaar: teller linkt naar de inbox" ;; *) fout "klikbaar: teller linkt niet naar de inbox" ;; esac
+
+printf '%s 3 fail %s\n' "$nu" "$nu" > "$CLAUDE_CONFIG_DIR/.rmos-status"
+uit="$(RMOS_BADGE_LINK=1 bash "$SL")"
+case "$uit" in *']8;;https://os.rankingmasters.nl/agents'*) ok "klikbaar: storing linkt naar de verbindpagina" ;; *) fout "klikbaar: storing linkt niet naar /agents" ;; esac
+
+uit="$(RMOS_BADGE_LINK=0 bash "$SL")"
+case "$uit" in *']8;;'*) fout "klikbaar: escape lekt in een terminal die het niet kan" ;; *) ok "klikbaar: geen escape waar de terminal het niet kent" ;; esac
+case "$uit" in *"RMOS !"*) ok "klikbaar: zonder link nog steeds een badge" ;; *) fout "klikbaar: zonder link geen badge" ;; esac
+
+uit="$(RMOS_BADGE_LINK=1 RMOS_URL="https://os.test.nl/" bash "$SL")"
+case "$uit" in *']8;;https://os.test.nl/agents'*) ok "klikbaar: RMOS_URL wint, dubbele slash weggepoetst" ;; *) fout "klikbaar: RMOS_URL niet overgenomen of slash blijft staan" ;; esac
+
+# een badge zonder terminalinfo hoort plat te zijn: onbekend is niet ondersteund
+uit="$(env -u TERM_PROGRAM -u KITTY_WINDOW_ID -u WT_SESSION -u VTE_VERSION bash "$SL")"
+case "$uit" in *']8;;'*) fout "klikbaar: onbekende terminal krijgt toch een escape" ;; *) ok "klikbaar: onbekende terminal krijgt een platte badge" ;; esac
+unset CLAUDE_CONFIG_DIR
+
+# 6f. de teller actueel houden terwijl iemand werkt. Deze hook mag maar in één
+#     situatie iets zeggen, en moet in alle andere zwijgen — hij vuurt bij élk
+#     bericht, dus een valse positief is meteen zeventien keer per dag ruis.
+RF="$(cd "$(dirname "$0")" && pwd)/rmos/hooks/refresh.sh"
+export CLAUDE_CONFIG_DIR="$TMP/cfg3"; mkdir -p "$CLAUDE_CONFIG_DIR"
+mkdir -p "$TMP/rolmap2"; oud=$(( $(date +%s) - 3600 ))
+
+[ -z "$(cd "$TMP/rolmap2" && bash "$RF")" ] && ok "verversen: zwijgt zonder standbestand (boot.sh doet dat al)" || fout "verversen: praat zonder stand"
+
+printf '%s 0 ok %s\n' "$(date +%s)" "$(date +%s)" > "$CLAUDE_CONFIG_DIR/.rmos-status"
+[ -z "$(cd "$TMP/rolmap2" && bash "$RF")" ] && ok "verversen: zwijgt bij een verse teller" || fout "verversen: dringt aan op een verse teller"
+
+printf '%s 2 ok %s\n' "$oud" "$oud" > "$CLAUDE_CONFIG_DIR/.rmos-status"
+uit="$(cd "$TMP/rolmap2" && bash "$RF")"
+case "$uit" in *rmos_changes*) ok "verversen: vraagt om rmos_changes bij een oude teller" ;; *) fout "verversen: zwijgt bij een oude teller" ;; esac
+case "$uit" in *"60 minuten"*) ok "verversen: noemt de leeftijd" ;; *) fout "verversen: noemt de leeftijd niet" ;; esac
+
+[ -z "$(cd "$TMP/rolmap2" && bash "$RF")" ] && ok "verversen: dringt niet twee keer binnen hetzelfde interval aan" || fout "verversen: blijft aandringen — ruis bij elk bericht"
+
+rm -f "$CLAUDE_CONFIG_DIR/.rmos-nudged"
+printf '%s 2 ok %s\n' "$oud" "$oud" > "$CLAUDE_CONFIG_DIR/.rmos-status"
+mkdir -p "$TMP/code2" && (cd "$TMP/code2" && git init -q 2>/dev/null)
+[ -z "$(cd "$TMP/code2" && bash "$RF")" ] && ok "verversen: zwijgt in een codebase" || fout "verversen: praat in een codebase"
+
+[ -z "$(cd "$TMP/rolmap2" && RMOS_REFRESH=0 bash "$RF")" ] && ok "verversen: RMOS_REFRESH=0 zet het uit" || fout "verversen: laat zich niet uitzetten"
+
+printf 'rommel\n' > "$CLAUDE_CONFIG_DIR/.rmos-status"
+[ -z "$(cd "$TMP/rolmap2" && bash "$RF")" ] && ok "verversen: zwijgt bij een onleesbare stand" || fout "verversen: praat op rommel"
+unset CLAUDE_CONFIG_DIR
+
 # 7. de manifesten moeten geldige JSON zijn, anders weigert Claude Code de plugin
 for f in .claude-plugin/marketplace.json rmos/.claude-plugin/plugin.json rmos/hooks/hooks.json; do
   p="$(dirname "$0")/$f"
@@ -124,7 +184,7 @@ done
 # 8. hooks.json moet naar bestaande scripts wijzen — een typo hier is een hook
 #    die stil nooit vuurt
 H="$(dirname "$0")/rmos/hooks/hooks.json"
-for s in boot.sh post-tool.sh post-tool-fail.sh; do
+for s in boot.sh post-tool.sh post-tool-fail.sh refresh.sh; do
   if grep -q "$s" "$H" && [ -f "$(dirname "$0")/rmos/hooks/$s" ]; then
     ok "hooks.json wijst naar een bestaande $s"
   else
