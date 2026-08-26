@@ -23,6 +23,17 @@
           }
         ]
       }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-fail.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   }
 }
