@@ -12,7 +12,7 @@ Bovenstaande regel is de terugvalroute voor wie de organisatie-uitrol nog niet h
 
 | Onderdeel | Wat het doet |
 |---|---|
-| `rmos/hooks/boot.sh` | Bij sessiestart in een rolmap: draagt de agent op om RMOS te vragen wat er veranderde, en om bij een nieuwe taak eerst te kijken wat er al bestaat. Zwijgt in een codebase. |
+| `rmos/hooks/boot.sh` | Bij elke sessiestart: draagt de agent op om RMOS te vragen wat er veranderde, en om bij een nieuwe taak eerst te kijken wat er al bestaat. In een git-repo komt er één alinea bij die de nadruk op dat tweede legt. |
 | `rmos/skills/rmos-nieuwe-taak` | Neemt het over zodra de bootinjectie is vervaagd: bij elke nieuwe taak eerst `rmos_start`. |
 | `rmos/hooks/post-tool.sh` | Onthoudt uit een RMOS-antwoord hoeveel er op je wacht, en dat de connector antwoordde. |
 | `rmos/hooks/post-tool-fail.sh` | Onthoudt dat een RMOS-call faalde, zodat een losse connector niet stil blijft. |
@@ -29,11 +29,11 @@ Zonder verbonden RMOS-connector doet deze plugin niets nuttigs. Verbinden: [os.r
 
 ## Zelftest
 
-`./test.sh` — geen framework, één bestand. Hij controleert de dragende tak (spreekt in een rolmap, zwijgt in een git-repo en in submappen daarvan), dat de tekst de agent daadwerkelijk naar `rmos_changes` en `rmos_start` stuurt, dat een falende of ontbrekende `git` de hook niet sloopt, en dat de manifesten geldige JSON zijn die naar bestaande scripts wijzen. Draait ook op elke push via GitHub Actions.
+`./test.sh` — geen framework, één bestand. Hij controleert dat de hook overal spreekt (rolmap, git-repo, submap van een repo, en ook wanneer `git` faalt of ontbreekt), dat de codebase-alinea alleen in een repo meekomt, dat `RMOS_BOOT=0` hem echt stil krijgt, dat de tekst de agent daadwerkelijk naar `rmos_changes` en `rmos_start` stuurt, en dat de manifesten geldige JSON zijn die naar bestaande scripts wijzen. Hij veegt eerst zijn eigen omgeving leeg, zodat een `RMOS_*` variabele in je shell geen valse uitslag kan geven. Draait ook op elke push via GitHub Actions.
 
-Voor de badge staan de leugens erin die hij niet mag vertellen: een teller verzinnen waar niets bekend is, een teller van dertien uur oud tonen, een storing van gisteravond tonen, een gefaalde `Bash`-call als connectorstoring lezen, een gewone tool de teller laten overschrijven, en blijven staan in een verweesde pluginmap.
+Voor de badge staan de leugens erin die hij niet mag vertellen: een teller verzinnen waar niets bekend is, groen staan terwijl RMOS nog geen woord gezegd heeft, een teller van dertien uur oud tonen, een storing van gisteravond tonen, een gefaalde `Bash`-call als connectorstoring lezen, een gewone tool de teller laten overschrijven, en blijven staan in een verweesde pluginmap.
 
-Waarom: beide faalmodi van de hook zijn stil. Zwijgt hij overal, dan is de feature dood en merkt niemand het; praat hij in codebases, dan zet iemand de plugin uit. Voor de badge geldt hetzelfde: een badge die staat terwijl er niets draait, kost precies het vertrouwen dat hij moest opbouwen.
+Waarom: elke faalmodus van deze plugin is stil. Dat is één keer echt misgegaan. `boot.sh` had een poort die hem in elke git-repo liet zwijgen — de gedachte was dat het gesprek daar over de code gaat en niet over iemands rol. Maar collega's zitten hun dag in repo's, dus stond de autonomie daar uit, en een hook die niets uitvoert ziet er precies zo uit als een hook die niets te melden heeft. Niemand kon het zien. De poort is weg: waar dit vuurt is niet de vraag, of de agent iets te zeggen heeft is de vraag, en dat beantwoordt `rmos_changes` zelf met één stille regel. Voor de badge gold dezelfde stilte: groen betekende ooit óók "nog nooit iets van RMOS gehoord".
 
 ## De badge in je statusbalk
 
@@ -41,12 +41,15 @@ Zodat je ziet dát RMOS meedraait, of er iets op je wacht, en of de connector no
 
 | Je ziet | Wat het betekent |
 |---|---|
-| `[RMOS]` groen | RMOS draait mee, niets dat op jou wacht |
+| `[RMOS ·]` dof | de plugin draait, maar er is geen actuele stand — meestal een connector die nog verbonden moet worden. Ook wat je ziet bij een teller van meer dan twaalf uur oud |
+| `[RMOS]` groen | RMOS draait mee en heeft net geantwoord: niets dat op jou wacht |
 | `[RMOS 3]` oranje | drie punten wachten op jou |
 | `[RMOS !]` rood | de laatste RMOS-call faalde: connector los of niet geautoriseerd. Verbinden: [os.rankingmasters.nl/agents](https://os.rankingmasters.nl/agents) |
 | niets | de plugin staat niet aan |
 
-**Cmd+klik op de badge opent RMOS** — bij een teller je inbox, bij een storing de verbindpagina, en anders het bedrijfsbrein zelf. Zien dat er iets wacht en er dan zelf naar moeten zoeken kost meer aandacht dan de badge oplevert.
+Eén regel voor de kleur: **dof betekent geen actuele stand, groen betekent actueel en stil.** Groen mag nooit "ik weet het niet" betekenen — dat was precies de leugen waar een collega met een onverbonden connector in liep.
+
+**Cmd+klik op de badge opent RMOS** — bij een teller je inbox, bij een storing of een doffe badge de verbindpagina, en anders het bedrijfsbrein zelf. Zien dat er iets wacht en er dan zelf naar moeten zoeken kost meer aandacht dan de badge oplevert.
 
 De badge hoort niet in jouw persoonlijke config. Zeventien collega's die met de hand een bash-oneliner in hun `settings.json` plakken, is zeventien kansen op een typo en een badge die bij niemand hetzelfde doet. Hij hoort bij de uitrol.
 
@@ -124,7 +127,7 @@ Zo live als het kan zonder een sleutel op zeventien laptops. Drie lagen, en het 
 
 Dat laatste is de eerlijke grens. De teller komt uit een RMOS-antwoord, en dat antwoord komt alleen als de agent RMOS aanroept. Dient een collega om 11:00 iets in, dan weet jouw balk dat om 15:00 nog niet.
 
-Daarom vraagt `refresh.sh` bij je volgende bericht één keer om een verversing zodra de teller ouder is dan tien minuten. Eén regel instructie, maximaal één keer per interval, en stil in een codebase — dezelfde grens als de bootcheck. In de praktijk: je werkt, je typt, de teller loopt mee.
+Daarom vraagt `refresh.sh` bij je volgende bericht één keer om een verversing zodra de teller ouder is dan tien minuten. Eén regel instructie, maximaal één keer per interval, overal waar je werkt — een teller verouderd in een repo net zo hard als daarbuiten. In de praktijk: je werkt, je typt, de teller loopt mee.
 
 | Knop | Wat het doet |
 |---|---|
@@ -132,6 +135,7 @@ Daarom vraagt `refresh.sh` bij je volgende bericht één keer om een verversing 
 | `RMOS_REFRESH=0` | het verversen helemaal uit |
 | `RMOS_URL` | andere basis-URL voor de links (standaard `https://os.rankingmasters.nl`) |
 | `RMOS_BADGE_LINK=0` | de badge niet klikbaar maken |
+| `RMOS_BOOT=0` | de bootcheck overslaan in deze shell — geen enkele RMOS-aanroep bij het opstarten |
 
 **Waarom de balk niet zelf belt.** Dat zou echt live zijn, en het kost een sleutel. De RMOS-verbinding loopt via je claude.ai-token in de keychain; dat in een shellscript trekken zet een credential op elke laptop van het bureau, voor een getal in een balk. De agent ís de geauthenticeerde weg naar RMOS — deze hook geeft hem alleen een zetje.
 

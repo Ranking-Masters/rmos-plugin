@@ -1,8 +1,8 @@
 #!/bin/bash
 # RMOS-badge voor de statusbalk.
 #
-# Drie dingen zichtbaar maken: dat RMOS meedraait, of er iets op je wacht, en of
-# de connector nog antwoordt. En bij het tweede: er in één klik naartoe kunnen.
+# Vier staten zichtbaar maken: RMOS draait en is stil, er wacht iets op je, de
+# connector is stuk, of RMOS heeft in deze installatie nog nooit geantwoord. En bij het tweede: er in één klik naartoe kunnen.
 # Een badge die zegt "er wachten drie dingen" en je daarna zelf laat zoeken,
 # kost meer aandacht dan hij oplevert.
 #
@@ -36,6 +36,7 @@ BEL=$'\a'
 GROEN="${ESC}[38;5;108m"
 ORANJE="${ESC}[38;5;208m"
 ROOD="${ESC}[38;5;167m"
+DOF="${ESC}[38;5;245m"
 UIT="${ESC}[0m"
 
 basis="${RMOS_URL:-https://os.rankingmasters.nl}"
@@ -74,11 +75,22 @@ if [ -f "$stand" ]; then
   esac
 fi
 
+# Geen actuele teller is een eigen staat en geen nul. Dat scheelt precies de
+# leugen waar deze badge om begonnen is: wie de connector niet verbonden had,
+# zag groen — "alles goed" — terwijl RMOS nog nooit een woord had gezegd. En een
+# teller van dertien uur oud is net zo min kennis van vandaag. Eén regel dus:
+# dof betekent geen actuele stand, groen betekent actueel en stil.
+[ -z "$aantal" ] && [ "$staat" = "ok" ] && staat="stil"
+
 # Een kapotte connector eerst: de teller is dan per definitie oud, en die naast
 # een storing tonen wekt de indruk dat hij nog ergens op gebaseerd is. De link
 # gaat naar de verbindpagina, want dat is wat je op dat moment moet doen.
 if [ "$staat" = "fail" ]; then
   kleur="$ROOD"; label="[RMOS !]"; doel="$basis/agents"
+elif [ "$staat" = "stil" ]; then
+  # Dof en met een punt: de plugin draait, RMOS heeft nog niets gezegd. Meestal
+  # een connector die nog verbonden moet worden — dus linkt dit naar de uitleg.
+  kleur="$DOF"; label="[RMOS ·]"; doel="$basis/agents"
 elif [ -n "$aantal" ] && [ "$aantal" -gt 0 ] 2>/dev/null; then
   kleur="$ORANJE"; label="[RMOS $aantal]"; doel="$basis/inbox"
 else

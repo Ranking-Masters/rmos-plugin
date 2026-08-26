@@ -14,16 +14,12 @@
 # zetje wanneer het getal oud is.
 #
 # Eén regel, maximaal één keer per interval, en alleen als er al een teller
-# bestaat die verlopen is — bij sessiestart doet boot.sh dit werk al.
+# bestaat die verlopen is — bij sessiestart doet boot.sh dit werk al. Dat is
+# ook de hele rem: hier stond een git-poort naast, en die maakte de hook dood
+# in elke repo terwijl de teller daar net zo hard verouderd.
 set -uo pipefail
 
 case "${RMOS_REFRESH:-1}" in 0|off|false) exit 0 ;; esac
-
-# In een codebase gaat het gesprek over die code, niet over je RMOS-inbox.
-# Zelfde grens als boot.sh: praat dit in elke klantrepo, dan gaat de plugin uit.
-if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  exit 0
-fi
 
 cfg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 stand="$cfg/.rmos-status"

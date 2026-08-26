@@ -2,11 +2,20 @@
 # Zelftest voor de RMOS-plugin. Geen framework, geen fixtures: één bestand dat
 # faalt als het gedrag verandert.
 #
-# Waarom dit bestaat: de hook heeft één tak (git-repo of niet) en die is
-# dragend. Breekt de detectie, dan zwijgt hij overal — feature dood, niemand
-# merkt het — of hij vuurt in elke klantcodebase en wordt uitgezet. Beide
-# faalmodi zijn stil, dus horen ze hier hard te falen.
+# Waarom dit bestaat: elke faalmodus van deze plugin is stil. Een hook die niets
+# uitvoert ziet er precies zo uit als een hook die niets te melden heeft, en een
+# badge die groen staat ziet er precies zo uit of RMOS nu geantwoord heeft of
+# nooit. Dat is één keer echt misgegaan: boot.sh had een poort die hem in elke
+# git-repo liet zwijgen, en omdat collega's hun dag in repo's doorbrengen stond
+# de hele autonomie daar uit zonder dat iemand het kon zien. Deze test bestaat
+# om dat soort stilte hard te laten falen.
 set -uo pipefail
+
+# Eerst de eigen omgeving leegvegen. Wie deze test draait met RMOS_BADGE_LINK of
+# RMOS_BOOT in zijn shell, meet een andere wereld dan de collega die de plugin
+# krijgt — en dan is de uitslag erger dan geen uitslag. De test zet zelf wat hij
+# nodig heeft.
+unset RMOS_BADGE_LINK RMOS_URL RMOS_BOOT RMOS_REFRESH RMOS_MAX_AGE
 
 HOOK="$(cd "$(dirname "$0")" && pwd)/rmos/hooks/boot.sh"
 TMP="$(mktemp -d)"
@@ -29,24 +38,40 @@ case "$uit" in *rmos_changes*) ok "noemt rmos_changes" ;; *) fout "noemt rmos_ch
 case "$uit" in *rmos_start*)   ok "noemt rmos_start" ;;   *) fout "noemt rmos_start niet" ;; esac
 case "$uit" in *"ack: true"*)  ok "legt ack uit" ;;       *) fout "legt ack niet uit" ;; esac
 
-# 3. codebase (git): moet zwijgen
+# 3. codebase (git): moet óók spreken. Dit is de regressie die één keer echt
+#    is opgetreden: hier stond een poort en daarmee stond RMOS uit op de plek
+#    waar collega's het grootste deel van hun dag zitten.
 mkdir -p "$TMP/code" && (cd "$TMP/code" && git init -q 2>/dev/null)
 uit2="$(cd "$TMP/code" && bash "$HOOK")"; code2=$?
 [ $code2 -eq 0 ] && ok "codebase: exit 0" || fout "codebase: exit $code2, moet 0 zijn"
-[ -z "$uit2" ] && ok "codebase: zwijgt" || fout "codebase: praat, en dan zet iemand de plugin uit"
+[ -n "$uit2" ] && ok "codebase: spreekt" || fout "codebase: zwijgt — dit is de regressie, RMOS staat dan uit in elke repo"
+case "$uit2" in *rmos_changes*) ok "codebase: noemt rmos_changes" ;; *) fout "codebase: noemt rmos_changes niet" ;; esac
+case "$uit2" in *rmos_start*)   ok "codebase: noemt rmos_start" ;;   *) fout "codebase: noemt rmos_start niet" ;; esac
+case "$uit2" in *codebase*)     ok "codebase: verlegt de nadruk" ;;  *) fout "codebase: geen woord over de codebase, dan is de weging weg" ;; esac
+[ "${#uit2}" -gt "${#uit}" ] && ok "codebase: langer dan de rolmap-tekst" || fout "codebase: niet langer, dus de extra alinea komt niet mee"
 
-# 4. submap van een repo hoort ook stil te zijn — daar werk je nog steeds aan code
+# 4. submap van een repo: zelfde verhaal, want dat is nog steeds diezelfde repo
 mkdir -p "$TMP/code/diep/er"
 uit3="$(cd "$TMP/code/diep/er" && bash "$HOOK")"
-[ -z "$uit3" ] && ok "submap van een repo: zwijgt" || fout "submap van een repo: praat"
+[ -n "$uit3" ] && ok "submap van een repo: spreekt" || fout "submap van een repo: zwijgt"
+case "$uit3" in *codebase*) ok "submap: nog steeds de codebase-nadruk" ;; *) fout "submap: verliest de codebase-nadruk" ;; esac
 
-# 5. faalt of ontbreekt git, dan mag de hook niet stuk: 'geen repo' is de
-#    veilige aanname, want zwijgen zou de feature stil doden
+# 5. faalt of ontbreekt git, dan mag de hook niet stuk. Zwijgen mag hier nooit
+#    het gevolg zijn: git is alleen nog goed voor de nadruk, niet voor het wel
+#    of niet vuren.
 mkdir -p "$TMP/bin"
 printf '#!/bin/sh\nexit 127\n' > "$TMP/bin/git" && chmod +x "$TMP/bin/git"
-uit4="$(cd "$TMP/rolmap" && PATH="$TMP/bin:$PATH" bash "$HOOK")"; code4=$?
+uit4="$(cd "$TMP/code" && PATH="$TMP/bin:$PATH" bash "$HOOK")"; code4=$?
 [ $code4 -eq 0 ] && ok "git faalt: exit 0" || fout "git faalt: exit $code4, moet 0 zijn"
-[ -n "$uit4" ] && ok "git faalt: spreekt (veilige aanname)" || fout "git faalt: zwijgt"
+[ -n "$uit4" ] && ok "git faalt: spreekt alsnog" || fout "git faalt: zwijgt, en dan hangt het vuren tóch aan git"
+case "$uit4" in *rmos_changes*) ok "git faalt: opdracht is intact" ;; *) fout "git faalt: opdracht kwijt" ;; esac
+
+# 5b. de uitweg moet werken, anders heeft niemand een antwoord op de privacyvraag
+uit5="$(cd "$TMP/rolmap" && RMOS_BOOT=0 bash "$HOOK")"; code5=$?
+[ $code5 -eq 0 ] && ok "RMOS_BOOT=0: exit 0" || fout "RMOS_BOOT=0: exit $code5"
+[ -z "$uit5" ] && ok "RMOS_BOOT=0: zwijgt" || fout "RMOS_BOOT=0: praat toch, dan is er geen uitweg"
+uit5b="$(cd "$TMP/rolmap" && RMOS_BOOT=off bash "$HOOK")"
+[ -z "$uit5b" ] && ok "RMOS_BOOT=off: zwijgt ook" || fout "RMOS_BOOT=off: praat toch"
 
 # 6. de statusbalk: een badge die liegt is erger dan geen badge
 export CLAUDE_CONFIG_DIR="$TMP/cfg"; mkdir -p "$CLAUDE_CONFIG_DIR"
@@ -61,6 +86,16 @@ payload() { printf '{"hook_event_name":"PostToolUse","tool_name":"%s","tool_resp
 uit="$(bash "$SL")"
 case "$uit" in *RMOS*) ok "statusbalk: toont een badge zonder standbestand" ;; *) fout "statusbalk: geen badge" ;; esac
 case "$uit" in *"RMOS ]"*|*"RMOS 0"*) fout "statusbalk: toont een teller waar niets bekend is" ;; *) ok "statusbalk: geen verzonnen teller" ;; esac
+
+# 6a. dof versus groen. Dit was een echte leugen: wie de connector nooit had
+#     verbonden, zag een groene badge — "alles goed" — terwijl RMOS nog nooit
+#     iets had gezegd. Groen mag alleen bij een actuele teller op nul.
+case "$uit" in *"RMOS ·"*)   ok "statusbalk: dof zolang RMOS niets gezegd heeft" ;; *) fout "statusbalk: geen dof-staat, dan liegt groen" ;; esac
+case "$uit" in *"38;5;108"*) fout "statusbalk: groen zonder één antwoord van RMOS" ;; *) ok "statusbalk: niet groen zonder antwoord" ;; esac
+case "$uit" in *"/agents"*)  ok "statusbalk: dof linkt naar de verbinduitleg" ;; *) fout "statusbalk: dof linkt niet naar /agents" ;; esac
+printf '%s 0 ok %s\n' "$(date +%s)" "$(date +%s)" > "$CLAUDE_CONFIG_DIR/.rmos-status"
+case "$(bash "$SL")" in *"38;5;108"*) ok "statusbalk: groen bij een actuele teller op nul" ;; *) fout "statusbalk: niet groen terwijl er niets wacht" ;; esac
+rm -f "$CLAUDE_CONFIG_DIR/.rmos-status"
 
 payload mcp__claude_ai_RMOS__rmos_changes 'RMOS WIJZIGINGEN\n\nWACHT OP JOU (4) - werk dat stilstaat' | bash "$PT"
 case "$(bash "$SL")" in *"RMOS 4"*) ok "statusbalk: teller uit een boot-check" ;; *) fout "statusbalk: teller niet overgenomen" ;; esac
@@ -78,6 +113,7 @@ case "$(bash "$SL")" in *"RMOS 99"*) fout "statusbalk: een Bash-call schreef de 
 
 printf '%s 9 ok %s\n' "$(( $(date +%s) - 46800 ))" "$(date +%s)" > "$CLAUDE_CONFIG_DIR/.rmos-status"
 case "$(bash "$SL")" in *"RMOS 9"*) fout "statusbalk: toont een teller van 13 uur oud" ;; *) ok "statusbalk: verouderde teller vervalt" ;; esac
+case "$(bash "$SL")" in *"RMOS ·"*) ok "statusbalk: verouderde teller wordt dof, niet groen" ;; *) fout "statusbalk: verouderde teller staat groen alsof hij actueel is" ;; esac
 
 # 6b. een kapotte connector: de plugin doet dan niets nuttigs, dus dat hoort te zien
 payload mcp__claude_ai_RMOS__rmos_start 'MCP error: not authenticated' | bash "$PF"
@@ -163,7 +199,10 @@ case "$uit" in *"60 minuten"*) ok "verversen: noemt de leeftijd" ;; *) fout "ver
 rm -f "$CLAUDE_CONFIG_DIR/.rmos-nudged"
 printf '%s 2 ok %s\n' "$oud" "$oud" > "$CLAUDE_CONFIG_DIR/.rmos-status"
 mkdir -p "$TMP/code2" && (cd "$TMP/code2" && git init -q 2>/dev/null)
-[ -z "$(cd "$TMP/code2" && bash "$RF")" ] && ok "verversen: zwijgt in een codebase" || fout "verversen: praat in een codebase"
+case "$(cd "$TMP/code2" && bash "$RF")" in
+  *rmos_changes*) ok "verversen: dringt ook in een codebase aan" ;;
+  *) fout "verversen: zwijgt in een codebase — de teller verouderd daar net zo hard" ;;
+esac
 
 [ -z "$(cd "$TMP/rolmap2" && RMOS_REFRESH=0 bash "$RF")" ] && ok "verversen: RMOS_REFRESH=0 zet het uit" || fout "verversen: laat zich niet uitzetten"
 

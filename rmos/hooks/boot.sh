@@ -8,15 +8,18 @@
 #
 # Waarom zo saai: een hook die zelf kennis ophaalt, wordt een tweede bron van
 # waarheid die stil kan afwijken van de server. Dit is een startschot, geen bron.
+#
+# Hier stond eerst een poort: in een git-repo zweeg deze hook, omdat het gesprek
+# daar over de code zou gaan en niet over iemands rol. Dat was fout, en het was
+# stil fout. Collega's zitten hun hele dag in repo's — die poort zette RMOS uit
+# op precies de plek waar hij het meest oplevert, en niemand kon zien waarom.
+# De vraag is niet wáár dit vuurt maar of de agent iets te zeggen heeft, en dat
+# beantwoordt rmos_changes zelf: geen nieuws is één stille regel.
 set -uo pipefail
 
-# In een codebase gaat het gesprek over die code, niet over iemands rol in het
-# bedrijf. Daar zwijgen we — anders vuurt dit in elke klantrepo en gaat het
-# binnen een week uit. Rolmappen (~/Projects/{Voornaam - Rol}, de AIOS-map)
-# zijn geen git-repo; dat is precies het onderscheid dat we nodig hebben.
-if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  exit 0
-fi
+# De enige uitweg, en met opzet expliciet. Wie geen enkele RMOS-aanroep wil,
+# zet dit in zijn shell; wie hem helemaal weg wil, zet de plugin uit.
+case "${RMOS_BOOT:-1}" in 0|off|false) exit 0 ;; esac
 
 cat <<'EOF'
 RMOS · het bedrijfsbrein van Ranking Masters draait mee in deze sessie.
@@ -38,4 +41,16 @@ Doe dit vóór je eerste antwoord, zonder het te vragen:
 Zijn er geen rmos_-tools? Dan is de connector niet verbonden. Zeg dat één keer
 (os.rankingmasters.nl/agents legt uit hoe) en werk verder zonder.
 EOF
+
+# In een codebase geldt hetzelfde, met een andere weegschaal. Niet zwijgen dus,
+# maar de nadruk verleggen: hier wordt opnieuw gebouwd wat al bestaat.
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  cat <<'EOF'
+
+Je zit in een codebase. Dat verandert niets aan het bovenstaande, alleen de
+weegschaal: punt 2 weegt hier het zwaarst. Een repo is precies de plek waar
+iemand een script, skill, template of afspraak opnieuw bouwt die er al ligt.
+Punt 1 houd je hier kort — meld alleen wat dít werk raakt en laat de rest staan.
+EOF
+fi
 exit 0

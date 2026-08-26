@@ -2,7 +2,7 @@
   "name": "rmos",
   "displayName": "RMOS",
   "description": "Het bedrijfsbrein van Ranking Masters. Bij sessiestart vertelt je agent zelf wat er veranderde en wat er op je wacht; bij een nieuwe taak kijkt hij eerst of er al een proces of template voor is. Vereist de RMOS-connector.",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "author": {
     "name": "Ranking Masters",
     "url": "https://os.rankingmasters.nl"
