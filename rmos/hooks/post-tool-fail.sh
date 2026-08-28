@@ -10,6 +10,12 @@
 # binnen. Dus hoeven we niet te raden of iets een fout was.
 set -uo pipefail
 
+# Zelfde reden als in post-tool.sh: uit is uit, ook voor de storingsstaat.
+rmos_uit=0
+case "${RMOS_OFF:-0}" in 1|on|true|uit) rmos_uit=1 ;; esac
+[ -f "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/rmos-off" ] && rmos_uit=1
+[ "$rmos_uit" = 1 ] && exit 0
+
 payload=""
 IFS= read -r -d '' -t 2 payload || true
 [ -n "$payload" ] || exit 0

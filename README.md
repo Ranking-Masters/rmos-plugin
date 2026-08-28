@@ -30,7 +30,7 @@ Zonder verbonden RMOS-connector doet deze plugin niets nuttigs. Verbinden: [os.r
 
 ## Zelftest
 
-`./test.sh` — geen framework, één bestand. Hij controleert dat een eigen `rmos`-entry in `~/.claude.json` wordt opgemerkt mét het exacte herstelcommando, dat een URL in getypte historie géén valse melding geeft, dat een stukke of ontbrekende python3 de opdracht intact laat, dat de melding bij nul tools vóór de opdracht staat, dat de hook overal spreekt (rolmap, git-repo, submap van een repo, en ook wanneer `git` faalt of ontbreekt), dat de codebase-alinea alleen in een repo meekomt, dat `RMOS_BOOT=0` hem echt stil krijgt, dat de tekst de agent daadwerkelijk naar `rmos_changes` en `rmos_start` stuurt, en dat de manifesten geldige JSON zijn die naar bestaande scripts wijzen. Hij veegt eerst zijn eigen omgeving leeg, zodat een `RMOS_*` variabele in je shell geen valse uitslag kan geven. Draait ook op elke push via GitHub Actions.
+`./test.sh` — geen framework, één bestand. Hij controleert dat een eigen `rmos`-entry in `~/.claude.json` wordt opgemerkt mét het exacte herstelcommando, dat een URL in getypte historie géén valse melding geeft, dat een stukke of ontbrekende python3 de opdracht intact laat, dat de melding bij nul tools vóór de opdracht staat, dat de hook overal spreekt (rolmap, git-repo, submap van een repo, en ook wanneer `git` faalt of ontbreekt), dat de codebase-alinea alleen in een repo meekomt, dat `RMOS_BOOT=0` hem echt stil krijgt, dat `RMOS_OFF=1` en `~/.claude/rmos-off` de hele plugin uitzetten — bootcheck, verversen, beide schrijvers en de badge — én dat de bootcheck dán nog wél zegt dát RMOS uit staat, dat de tekst de agent daadwerkelijk naar `rmos_changes` en `rmos_start` stuurt, en dat de manifesten geldige JSON zijn die naar bestaande scripts wijzen. Hij veegt eerst zijn eigen omgeving leeg, zodat een `RMOS_*` variabele in je shell geen valse uitslag kan geven. Draait ook op elke push via GitHub Actions.
 
 Voor de badge staan de leugens erin die hij niet mag vertellen: een teller verzinnen waar niets bekend is, groen staan terwijl RMOS nog geen woord gezegd heeft, een teller van dertien uur oud tonen, een storing van gisteravond tonen, een gefaalde `Bash`-call als connectorstoring lezen, een gewone tool de teller laten overschrijven, en blijven staan in een verweesde pluginmap.
 
@@ -137,6 +137,10 @@ Sinds de server onder elk antwoord één regel meestuurt — `RMOS-stand: N punt
 | `RMOS_URL` | andere basis-URL voor de links (standaard `https://os.rankingmasters.nl`) |
 | `RMOS_BADGE_LINK=0` | de badge niet klikbaar maken |
 | `RMOS_BOOT=0` | de bootcheck overslaan in deze shell — geen enkele RMOS-aanroep bij het opstarten |
+| `RMOS_OFF=1` | de hele plugin uit in deze shell: bootcheck, verversen, teller én badge |
+| `~/.claude/rmos-off` | hetzelfde, maar blijvend — dit is wat `/rmos-uit` aanmaakt en `/rmos-aan` weghaalt |
+
+**De privéknop.** `RMOS_OFF` is er voor wie even zonder RMOS wil werken. Met de wrapper uit `rmos/README.md` typ je `claude --dangerously-skip-permissions --rmos-off` en is het geregeld. Let op wat het níét doet: de MCP-tools blijven staan, want die komen van de connector en niet van deze plugin. Daarom zwijgt `boot.sh` dan niet, maar zegt hij één regel dat RMOS uit staat en de tools niet gebruikt moeten worden — anders blijven de instructies van de connector zelf de agent naar `rmos_start` duwen, en dan heet het uit terwijl het aan is. De tools echt weg: `/mcp`, per map.
 
 **Waarom de balk niet zelf belt.** Dat zou echt live zijn, en het kost een sleutel. De RMOS-verbinding loopt via je claude.ai-token in de keychain; dat in een shellscript trekken zet een credential op elke laptop van het bureau, voor een getal in een balk. De agent ís de geauthenticeerde weg naar RMOS — deze hook geeft hem alleen een zetje.
 

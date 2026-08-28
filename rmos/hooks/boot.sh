@@ -22,9 +22,27 @@
 #    onopgemerkt dat hij nul RMOS-tools had. Die melding staat nu vooraan.
 set -uo pipefail
 
-# De enige uitweg, en met opzet expliciet. Wie geen enkele RMOS-aanroep wil,
-# zet dit in zijn shell; wie hem helemaal weg wil, zet de plugin uit.
+# Alleen deze bootcheck overslaan, en met opzet expliciet. Voor wie geen enkele
+# RMOS-aanroep bij het opstarten wil maar de badge wél wil houden. De knop voor
+# de hele plugin staat hieronder.
 case "${RMOS_BOOT:-1}" in 0|off|false) exit 0 ;; esac
+
+# En de knop die de hele plugin uitzet, voor wie even privé wil werken:
+# `claude --rmos-off` via de wrapper uit de README, `RMOS_OFF=1` in je shell, of
+# het bestand voor wie het permanent wil. Alle vijf de scripts kijken hiernaar.
+#
+# Waarom dit één regel zégt in plaats van te zwijgen zoals RMOS_BOOT=0: de
+# connector zet zijn eigen gebruiksinstructie in de systeemprompt, en die blijft
+# de agent naar rmos_start duwen ook als deze plugin niets meer roept. Zwijgen
+# zou hier dus "uit" heten en "aan" zijn. Wie ook die regel niet wil, zet de
+# connector er met /mcp bij uit.
+rmos_uit=0
+case "${RMOS_OFF:-0}" in 1|on|true|uit) rmos_uit=1 ;; esac
+[ -f "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/rmos-off" ] && rmos_uit=1
+if [ "$rmos_uit" = 1 ]; then
+  echo "RMOS staat uit in deze sessie. Gebruik de rmos_-tools niet en zeg hier verder niets over."
+  exit 0
+fi
 
 echo "RMOS · het bedrijfsbrein van Ranking Masters draait mee in deze sessie."
 echo
@@ -63,7 +81,7 @@ Heb je geen rmos_-tools tot je beschikking, dan is dat het eerste wat je meldt �
 in één regel, ook als het bericht van de gebruiker maar één woord is. Zonder die
 tools is dit bericht het enige signaal dat RMOS er hoort te zijn, dus zwijgen
 betekent dat niemand het merkt. os.rankingmasters.nl/agents legt uit hoe je
-verbindt. Wil iemand dit bewust niet zien: RMOS_BOOT=0 in zijn shell.
+verbindt. Wil iemand dit bewust niet zien: RMOS_OFF=1 in zijn shell.
 
 Heb je ze wél, doe dan dit vóór je eerste antwoord, zonder het te vragen:
 

@@ -21,6 +21,12 @@ set -uo pipefail
 
 case "${RMOS_REFRESH:-1}" in 0|off|false) exit 0 ;; esac
 
+# Staat de hele plugin uit, dan hoort hier niets meer vandaan te komen. Zie boot.sh.
+rmos_uit=0
+case "${RMOS_OFF:-0}" in 1|on|true|uit) rmos_uit=1 ;; esac
+[ -f "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/rmos-off" ] && rmos_uit=1
+[ "$rmos_uit" = 1 ] && exit 0
+
 cfg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 stand="$cfg/.rmos-status"
 zetje="$cfg/.rmos-nudged"

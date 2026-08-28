@@ -15,7 +15,7 @@ set -uo pipefail
 # RMOS_BOOT in zijn shell, meet een andere wereld dan de collega die de plugin
 # krijgt — en dan is de uitslag erger dan geen uitslag. De test zet zelf wat hij
 # nodig heeft.
-unset RMOS_BADGE_LINK RMOS_URL RMOS_BOOT RMOS_REFRESH RMOS_MAX_AGE
+unset RMOS_BADGE_LINK RMOS_URL RMOS_BOOT RMOS_REFRESH RMOS_MAX_AGE RMOS_OFF
 
 HOOK="$(cd "$(dirname "$0")" && pwd)/rmos/hooks/boot.sh"
 TMP="$(mktemp -d)"
@@ -131,6 +131,20 @@ uit5="$(cd "$TMP/rolmap" && RMOS_BOOT=0 bash "$HOOK")"; code5=$?
 uit5b="$(cd "$TMP/rolmap" && RMOS_BOOT=off bash "$HOOK")"
 [ -z "$uit5b" ] && ok "RMOS_BOOT=off: zwijgt ook" || fout "RMOS_BOOT=off: praat toch"
 
+# 5c. de hele plugin uit — de knop voor wie even privé werkt. Die moet twee
+#     dingen tegelijk doen: de opdracht weglaten én zeggen dát RMOS uit staat.
+#     Alleen zwijgen is hier niet genoeg, en dat is geen detail: de connector
+#     zet zijn eigen gebruiksinstructie in de systeemprompt, dus een stille hook
+#     laat de agent alsnog naar rmos_start grijpen. Dan heet het uit en is het aan.
+mkdir -p "$TMP/uitcfg"
+uit6="$(cd "$TMP/rolmap" && CLAUDE_CONFIG_DIR="$TMP/uitcfg" RMOS_OFF=1 bash "$HOOK")"; code6=$?
+[ $code6 -eq 0 ] && ok "RMOS_OFF=1: exit 0" || fout "RMOS_OFF=1: exit $code6"
+case "$uit6" in *"staat uit"*) ok "RMOS_OFF=1: zegt dat RMOS uit staat" ;; *) fout "RMOS_OFF=1: zwijgt, en dan grijpt de agent alsnog naar de tools" ;; esac
+case "$uit6" in *"Roep rmos_changes aan"*) fout "RMOS_OFF=1: geeft de opdracht toch nog" ;; *) ok "RMOS_OFF=1: geen opdracht meer" ;; esac
+touch "$TMP/uitcfg/rmos-off"
+uit6b="$(cd "$TMP/rolmap" && CLAUDE_CONFIG_DIR="$TMP/uitcfg" bash "$HOOK")"
+case "$uit6b" in *"staat uit"*) ok "bestand rmos-off: werkt zonder omgevingsvariabele" ;; *) fout "bestand rmos-off: wordt genegeerd, dan is er geen permanente uit" ;; esac
+
 # 6. de statusbalk: een badge die liegt is erger dan geen badge
 export CLAUDE_CONFIG_DIR="$TMP/cfg"; mkdir -p "$CLAUDE_CONFIG_DIR"
 SL="$(cd "$(dirname "$0")" && pwd)/rmos/hooks/statusline.sh"
@@ -154,6 +168,10 @@ case "$uit" in *"38;5;108"*) fout "statusbalk: groen zonder één antwoord van R
 # draait in plaats van het doel van de badge — precies zoals dit lokaal groen
 # was in Warp en op de runner rood.
 case "$(RMOS_BADGE_LINK=1 bash "$SL")" in *']8;;'*"/agents"*) ok "statusbalk: dof linkt naar de verbinduitleg" ;; *) fout "statusbalk: dof linkt niet naar /agents" ;; esac
+
+# Uit hoort in de balk te staan, niet weg te vallen. Een lege plek is niet te
+# onderscheiden van een plugin die niet geladen is, en dan gaat iemand navragen.
+case "$(RMOS_OFF=1 bash "$SL")" in *"RMOS uit"*) ok "statusbalk: toont dat RMOS uit staat" ;; *) fout "statusbalk: verzwijgt dat RMOS uit staat" ;; esac
 printf '%s 0 ok %s\n' "$(date +%s)" "$(date +%s)" > "$CLAUDE_CONFIG_DIR/.rmos-status"
 case "$(bash "$SL")" in *"38;5;108"*) ok "statusbalk: groen bij een actuele teller op nul" ;; *) fout "statusbalk: niet groen terwijl er niets wacht" ;; esac
 rm -f "$CLAUDE_CONFIG_DIR/.rmos-status"
@@ -277,6 +295,20 @@ esac
 
 [ -z "$(cd "$TMP/rolmap2" && RMOS_REFRESH=0 bash "$RF")" ] && ok "verversen: RMOS_REFRESH=0 zet het uit" || fout "verversen: laat zich niet uitzetten"
 
+# De grote knop moet ook hier gelden, en bij de twee schrijvers. Een teller die
+# doorloopt terwijl iemand denkt dat hij privé werkt is precies de leugen waar
+# deze badge om begonnen is.
+rm -f "$CLAUDE_CONFIG_DIR/.rmos-nudged"
+printf '%s 2 ok %s\n' "$oud" "$oud" > "$CLAUDE_CONFIG_DIR/.rmos-status"
+[ -z "$(cd "$TMP/rolmap2" && RMOS_OFF=1 bash "$RF")" ] && ok "verversen: RMOS_OFF=1 zet het ook uit" || fout "verversen: negeert RMOS_OFF"
+
+rm -f "$CLAUDE_CONFIG_DIR/.rmos-status"
+payload "mcp__claude_ai_RMOS__rmos_changes" "RMOS WIJZIGINGEN. WACHT OP JOU (3)" | RMOS_OFF=1 bash "$PT"
+[ -f "$CLAUDE_CONFIG_DIR/.rmos-status" ] && fout "post-tool: schrijft de teller toch met RMOS_OFF=1" || ok "post-tool: schrijft niets met RMOS_OFF=1"
+
+payload "mcp__claude_ai_RMOS__rmos_find" "boem" | RMOS_OFF=1 bash "$PF"
+[ -f "$CLAUDE_CONFIG_DIR/.rmos-status" ] && fout "post-tool-fail: schrijft de staat toch met RMOS_OFF=1" || ok "post-tool-fail: schrijft niets met RMOS_OFF=1"
+
 printf 'rommel\n' > "$CLAUDE_CONFIG_DIR/.rmos-status"
 [ -z "$(cd "$TMP/rolmap2" && bash "$RF")" ] && ok "verversen: zwijgt bij een onleesbare stand" || fout "verversen: praat op rommel"
 unset CLAUDE_CONFIG_DIR
@@ -295,6 +327,9 @@ done
 #    die stil nooit vuurt
 H="$(dirname "$0")/rmos/hooks/hooks.json"
 [ -f "$(dirname "$0")/rmos/hooks/eigen-rmos.py" ] && ok "eigen-rmos.py wordt meegeleverd" || fout "eigen-rmos.py ontbreekt, dan is de diagnose dood"
+for c in rmos-uit rmos-aan; do
+  [ -f "$(dirname "$0")/rmos/commands/$c.md" ] && ok "/$c wordt meegeleverd" || fout "/$c ontbreekt, dan is er geen permanente knop"
+done
 for s in boot.sh post-tool.sh post-tool-fail.sh refresh.sh; do
   if grep -q "$s" "$H" && [ -f "$(dirname "$0")/rmos/hooks/$s" ]; then
     ok "hooks.json wijst naar een bestaande $s"

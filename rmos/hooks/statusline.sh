@@ -39,6 +39,17 @@ ROOD="${ESC}[38;5;167m"
 DOF="${ESC}[38;5;245m"
 UIT="${ESC}[0m"
 
+# Uit hoort zichtbaar te zijn, niet leeg. Een collega die niet meer weet of hij
+# vanochtend met --rmos-off begon, gaat het navragen — en navragen is precies
+# wat deze badge weg moest nemen. Dof label dus, geen lege balk.
+rmos_uit=0
+case "${RMOS_OFF:-0}" in 1|on|true|uit) rmos_uit=1 ;; esac
+[ -f "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/rmos-off" ] && rmos_uit=1
+if [ "$rmos_uit" = 1 ]; then
+  printf '%s' "${DOF}[RMOS uit]${UIT}"
+  exit 0
+fi
+
 basis="${RMOS_URL:-https://os.rankingmasters.nl}"
 basis="${basis%/}"
 
