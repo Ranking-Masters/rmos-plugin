@@ -27,6 +27,19 @@ set -uo pipefail
 # de hele plugin staat hieronder.
 case "${RMOS_BOOT:-1}" in 0|off|false) exit 0 ;; esac
 
+# Onze eigen versie, uit het manifest ernaast. Waarom dit meegaat naar RMOS: een
+# verouderde plugin ziet er van buiten precies hetzelfde uit als een actuele, en
+# geeft wél verouderde instructies. Bouke leverde op 28 augustus 2026 een audit in
+# met een wijziging voor een schakelaar die al bestond, omdat bij hem 2.2.0 stond
+# en niet 2.7.1 — uren werk aan iets dat er al was.
+#
+# Deze hook doet zelf geen netwerkaanroep (dat blijft zo: hij is een startschot,
+# geen tweede bron van waarheid). Hij zegt alleen wat hij is; RMOS kijkt of dat de
+# huidige versie is en meldt het.
+PLUGIN_MANIFEST="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.claude-plugin" 2>/dev/null && pwd)/plugin.json"
+PLUGIN_VERSIE="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([0-9.]*\)".*/\1/p' "$PLUGIN_MANIFEST" 2>/dev/null | head -1)"
+[ -z "$PLUGIN_VERSIE" ] && PLUGIN_VERSIE="onbekend"
+
 # En de knop die de hele plugin uitzet, voor wie even privé wil werken:
 # `claude --rmos-off` via de wrapper uit de README, `RMOS_OFF=1` in je shell, of
 # het bestand voor wie het permanent wil. Alle vijf de scripts kijken hiernaar.
@@ -76,7 +89,9 @@ if [ -n "$eigen" ]; then
   echo
 fi
 
-cat <<'EOF'
+# De plaatshouder vullen: de heredoc is aangehaald zodat de tekst zelf ongemoeid
+# blijft (er staan $-tekens en backticks in), dus vervangen doet sed erna.
+sed "s/__PLUGIN_VERSIE__/$PLUGIN_VERSIE/" <<'EOF'
 Heb je geen rmos_-tools tot je beschikking, dan is dat het eerste wat je meldt —
 in één regel, ook als het bericht van de gebruiker maar één woord is. Zonder die
 tools is dit bericht het enige signaal dat RMOS er hoort te zijn, dus zwijgen
@@ -85,8 +100,10 @@ verbindt. Wil iemand dit bewust niet zien: RMOS_OFF=1 in zijn shell.
 
 Heb je ze wél, doe dan dit vóór je eerste antwoord, zonder het te vragen:
 
-1. Roep rmos_changes aan (zonder ack). RMOS weet wie je bent en wat deze persoon
-   het laatst zag. Staat er "niets veranderd", zeg dan niets en werk gewoon door.
+1. Roep rmos_changes aan (zonder ack) en geef plugin: "__PLUGIN_VERSIE__" mee.
+   RMOS weet wie je bent, wat deze persoon het laatst zag, en of jouw plugin
+   achterloopt.
+   Staat er "niets veranderd", dan zeg je niets en werk je gewoon door. Staat er "niets veranderd", zeg dan niets en werk gewoon door.
    Is er wél iets: vertel het kort en toegespitst op de rol van deze persoon, en
    zeg erbij wat er lokaal moet worden vastgelegd. Pas nadat je het gemeld hebt
    roep je rmos_changes nog eens aan met ack: true — dan pas telt het als gezien.
