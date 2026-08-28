@@ -8,7 +8,7 @@ Zorgt dat het bedrijfsbrein meedraait zonder dat iemand erom hoeft te vragen.
 | `skills/rmos-nieuwe-taak` | Neemt het over zodra de bootinjectie is vervaagd: bij elke nieuwe taak eerst `rmos_start`. |
 | `hooks/statusline.sh` | Badge voor je statusbalk: draait RMOS mee, en wacht er iets op je. |
 | `hooks/post-tool.sh` | Onthoudt de teller uit het antwoord van de boot-check. Slaat geen kennis en geen sleutel op. |
-| `commands/rmos-uit.md` · `rmos-aan.md` | `/rmos-uit` en `/rmos-aan`: RMOS uit of aan op deze machine, blijvend. |
+| `commands/uit.md` · `aan.md` | `/rmos:uit` en `/rmos:aan`: RMOS uit of aan op deze machine, blijvend. |
 
 ## Wat deze plugin bewust níét doet
 
@@ -43,7 +43,7 @@ Zodat je ziet dát RMOS meedraait — en of er iets op je wacht. Eén regel in `
 |---|---|
 | `[RMOS]` groen | RMOS draait mee, niets dat op jou wacht |
 | `[RMOS 3]` oranje | drie punten wachten op jou — je agent heeft ze bij de sessiestart gemeld |
-| `[RMOS uit]` dof | je hebt RMOS zelf uitgezet — `/rmos-aan` of start zonder `--rmos-off` |
+| `[RMOS uit]` dof | je hebt RMOS zelf uitgezet — `/rmos:aan` of start zonder `--rmos-off` |
 | niets | de plugin staat niet aan |
 
 Twee dingen over dat commando. Het zoekt zijn eigen pad met een sterretje in plaats van een vast versienummer, want anders verdwijnt de badge stil bij de eerste plugin-update. En het draait daarna de ponytail-badge als die er is: Claude Code kent maar één `statusLine`, dus twee badges betekent twee commando's achter elkaar. Gebruik je ponytail niet, dan kun je dat tweede stuk weglaten.
@@ -57,7 +57,7 @@ Drie knoppen, want het zijn drie verschillende wensen.
 | Wat je wilt | Hoe |
 |---|---|
 | even privé werken, deze sessie | `claude --rmos-off` (zie hieronder) of `RMOS_OFF=1 claude` |
-| voorgoed uit op deze machine | `/rmos-uit` — en `/rmos-aan` zet hem terug |
+| voorgoed uit op deze machine | `/rmos:uit` — en `/rmos:aan` zet hem terug |
 | helemaal weg | `/plugin uninstall rmos@rmos` |
 
 Die laatste werkt alleen als je de plugin zelf hebt geïnstalleerd. Kwam hij via de organisatie-uitrol, dan weigert Claude Code met *"This plugin is managed by your organization"* — dat is de bedoeling van die laag, en precies waarom de eerste twee knoppen bestaan.
@@ -82,4 +82,4 @@ Alle vijf de scripts kijken naar `RMOS_OFF` en naar `~/.claude/rmos-off`, dus de
 
 **Wat uitzetten níét doet: de MCP-tools weghalen.** Die komen van de RMOS-connector, niet van deze plugin. Ze blijven in de lijst staan, en daarom zwijgt `boot.sh` niet als RMOS uit staat maar zegt hij één regel: gebruik ze niet. Zonder die regel blijven de instructies van de connector zelf de agent naar `rmos_start` duwen — dan heet het uit en is het aan. Wil je ze echt weg, zet de connector er dan met `/mcp` bij uit; dat onthoudt Claude Code per map.
 
-Er blijft niets achter: de plugin schrijft alleen `~/.claude/.rmos-status`, `~/.claude/.rmos-nudged` en — als je `/rmos-uit` gebruikt — `~/.claude/rmos-off`.
+Er blijft niets achter: de plugin schrijft alleen `~/.claude/.rmos-status`, `~/.claude/.rmos-nudged` en — als je `/rmos:uit` gebruikt — `~/.claude/rmos-off`.

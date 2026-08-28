@@ -327,8 +327,8 @@ done
 #    die stil nooit vuurt
 H="$(dirname "$0")/rmos/hooks/hooks.json"
 [ -f "$(dirname "$0")/rmos/hooks/eigen-rmos.py" ] && ok "eigen-rmos.py wordt meegeleverd" || fout "eigen-rmos.py ontbreekt, dan is de diagnose dood"
-for c in rmos-uit rmos-aan; do
-  [ -f "$(dirname "$0")/rmos/commands/$c.md" ] && ok "/$c wordt meegeleverd" || fout "/$c ontbreekt, dan is er geen permanente knop"
+for c in uit aan; do
+  [ -f "$(dirname "$0")/rmos/commands/$c.md" ] && ok "/rmos:$c wordt meegeleverd" || fout "/rmos:$c ontbreekt, dan is er geen permanente knop"
 done
 for s in boot.sh post-tool.sh post-tool-fail.sh refresh.sh; do
   if grep -q "$s" "$H" && [ -f "$(dirname "$0")/rmos/hooks/$s" ]; then

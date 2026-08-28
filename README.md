@@ -138,7 +138,7 @@ Sinds de server onder elk antwoord één regel meestuurt — `RMOS-stand: N punt
 | `RMOS_BADGE_LINK=0` | de badge niet klikbaar maken |
 | `RMOS_BOOT=0` | de bootcheck overslaan in deze shell — geen enkele RMOS-aanroep bij het opstarten |
 | `RMOS_OFF=1` | de hele plugin uit in deze shell: bootcheck, verversen, teller én badge |
-| `~/.claude/rmos-off` | hetzelfde, maar blijvend — dit is wat `/rmos-uit` aanmaakt en `/rmos-aan` weghaalt |
+| `~/.claude/rmos-off` | hetzelfde, maar blijvend — dit is wat `/rmos:uit` aanmaakt en `/rmos:aan` weghaalt |
 
 **De privéknop.** `RMOS_OFF` is er voor wie even zonder RMOS wil werken. Met de wrapper uit `rmos/README.md` typ je `claude --dangerously-skip-permissions --rmos-off` en is het geregeld. Let op wat het níét doet: de MCP-tools blijven staan, want die komen van de connector en niet van deze plugin. Daarom zwijgt `boot.sh` dan niet, maar zegt hij één regel dat RMOS uit staat en de tools niet gebruikt moeten worden — anders blijven de instructies van de connector zelf de agent naar `rmos_start` duwen, en dan heet het uit terwijl het aan is. De tools echt weg: `/mcp`, per map.
 
