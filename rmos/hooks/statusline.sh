@@ -39,16 +39,16 @@ ROOD="${ESC}[38;5;167m"
 DOF="${ESC}[38;5;245m"
 UIT="${ESC}[0m"
 
-# Uit hoort zichtbaar te zijn, niet leeg. Een collega die niet meer weet of hij
-# vanochtend met --rmos-off begon, gaat het navragen — en navragen is precies
-# wat deze badge weg moest nemen. Dof label dus, geen lege balk.
+# Wie RMOS uitzet, zet ook de badge uit. Hier stond eerst een dof [RMOS uit],
+# vanuit de gedachte dat een lege plek niet te onderscheiden is van een plugin
+# die niet geladen is. Dat klopt, maar het weegt hier niet op tegen het andere:
+# je statusbalk is van jou, en RMOS hoort hem niet te bezetten nadat je hem
+# hebt weggestuurd. De ambiguïteit is bovendien klein wanneer je zelf de knop
+# hebt omgezet — en /rmos:aan brengt hem terug.
 rmos_uit=0
 case "${RMOS_OFF:-0}" in 1|on|true|uit) rmos_uit=1 ;; esac
 [ -f "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/rmos-off" ] && rmos_uit=1
-if [ "$rmos_uit" = 1 ]; then
-  printf '%s' "${DOF}[RMOS uit]${UIT}"
-  exit 0
-fi
+[ "$rmos_uit" = 1 ] && exit 0
 
 basis="${RMOS_URL:-https://os.rankingmasters.nl}"
 basis="${basis%/}"

@@ -43,8 +43,7 @@ Zodat je ziet dát RMOS meedraait — en of er iets op je wacht. Eén regel in `
 |---|---|
 | `[RMOS]` groen | RMOS draait mee, niets dat op jou wacht |
 | `[RMOS 3]` oranje | drie punten wachten op jou — je agent heeft ze bij de sessiestart gemeld |
-| `[RMOS uit]` dof | je hebt RMOS zelf uitgezet — `/rmos:aan` of start zonder `--rmos-off` |
-| niets | de plugin staat niet aan |
+| niets | de plugin staat niet aan, of je hebt hem zelf uitgezet met `/rmos:uit` |
 
 Twee dingen over dat commando. Het zoekt zijn eigen pad met een sterretje in plaats van een vast versienummer, want anders verdwijnt de badge stil bij de eerste plugin-update. En het draait daarna de ponytail-badge als die er is: Claude Code kent maar één `statusLine`, dus twee badges betekent twee commando's achter elkaar. Gebruik je ponytail niet, dan kun je dat tweede stuk weglaten.
 

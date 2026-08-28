@@ -169,9 +169,8 @@ case "$uit" in *"38;5;108"*) fout "statusbalk: groen zonder één antwoord van R
 # was in Warp en op de runner rood.
 case "$(RMOS_BADGE_LINK=1 bash "$SL")" in *']8;;'*"/agents"*) ok "statusbalk: dof linkt naar de verbinduitleg" ;; *) fout "statusbalk: dof linkt niet naar /agents" ;; esac
 
-# Uit hoort in de balk te staan, niet weg te vallen. Een lege plek is niet te
-# onderscheiden van een plugin die niet geladen is, en dan gaat iemand navragen.
-case "$(RMOS_OFF=1 bash "$SL")" in *"RMOS uit"*) ok "statusbalk: toont dat RMOS uit staat" ;; *) fout "statusbalk: verzwijgt dat RMOS uit staat" ;; esac
+# Zet iemand RMOS uit, dan is de balk weer van hem. Geen badge, geen restje.
+[ -z "$(RMOS_OFF=1 bash "$SL")" ] && ok "statusbalk: verdwijnt als RMOS uit staat" || fout "statusbalk: blijft staan terwijl RMOS uit staat"
 printf '%s 0 ok %s\n' "$(date +%s)" "$(date +%s)" > "$CLAUDE_CONFIG_DIR/.rmos-status"
 case "$(bash "$SL")" in *"38;5;108"*) ok "statusbalk: groen bij een actuele teller op nul" ;; *) fout "statusbalk: niet groen terwijl er niets wacht" ;; esac
 rm -f "$CLAUDE_CONFIG_DIR/.rmos-status"
