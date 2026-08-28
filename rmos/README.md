@@ -4,7 +4,7 @@ Zorgt dat het bedrijfsbrein meedraait zonder dat iemand erom hoeft te vragen.
 
 | Onderdeel | Wat het doet |
 |---|---|
-| `hooks/boot.sh` | Bij sessiestart in een rolmap: draagt de agent op om RMOS te vragen wat er veranderde en om bij een nieuwe taak eerst te kijken wat er al bestaat. Zwijgt in een codebase. |
+| `hooks/boot.sh` | Bij sessiestart: draagt de agent op om RMOS te vragen wat er veranderde en om bij een nieuwe taak eerst te kijken wat er al bestaat. Vuurt overal — in een codebase verschuift alleen de nadruk naar dat tweede. |
 | `skills/rmos-nieuwe-taak` | Neemt het over zodra de bootinjectie is vervaagd: bij elke nieuwe taak eerst `rmos_start`. |
 | `hooks/statusline.sh` | Badge voor je statusbalk: draait RMOS mee, en wacht er iets op je. |
 | `hooks/post-tool.sh` | Onthoudt de teller uit het antwoord van de boot-check. Slaat geen kennis en geen sleutel op. |
